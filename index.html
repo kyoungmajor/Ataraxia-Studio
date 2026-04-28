@@ -1,0 +1,3663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ataraxia Studio — Calm code. Steady systems.</title>
+  <meta name="description" content="A one-person dev studio building and maintaining e-commerce sites for independent retail. Shopify migrations, Smooth Operator maintenance, and custom React storefronts." />
+  <meta name="theme-color" content="#050505" />
+  <link rel="canonical" href="https://devataraxia.com/" />
+
+  <!-- Open Graph / social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Ataraxia Studio" />
+  <meta property="og:description" content="Calm code. Steady systems. E-commerce sites and AI tooling for independent retail." />
+  <meta property="og:url" content="https://devataraxia.com/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Ataraxia Studio" />
+  <meta name="twitter:description" content="Calm code. Steady systems. E-commerce sites and AI tooling for independent retail." />
+
+  <!-- Inline SVG favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23050505'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='%2367e8f9' stroke-width='2'/%3E%3C/svg%3E" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { background: #050505; color: #fff; scroll-behavior: smooth; }
+    [id="home"], [id="services"], [id="lab"], [id="pricing"], [id="contact"] {
+      scroll-margin-top: 96px;
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.383.0?deps=react@18.2.0"
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-type="module" data-presets="react">
+    import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+    import { createRoot } from "react-dom/client";
+    import * as LucideAll from "lucide-react";
+
+    const __ICONS = LucideAll;
+    const __components = {};
+
+    // ===== Portfolio =====
+    (() => {
+      const { ShoppingBag, Bot, ArrowUpRight, Menu, X, Terminal, Zap, GitBranch, Hammer, ShieldCheck, Check, Wrench, Activity, TrendingUp, Send, CheckCircle2, Mail, MessageSquare, Sparkles, Wifi, Radio, Compass } = __ICONS;
+
+// ============================================================
+// LINDY / LEAD CONFIG — swap in your real values here
+// ============================================================
+//
+// >>> n8n / WEBHOOK SETUP (when you're ready) <<<
+// 1. In n8n, build a workflow that starts with a "Webhook" trigger
+//    set to POST and "Respond Immediately".
+// 2. Activate the workflow and copy its **Production Webhook URL**.
+//    It looks like: https://YOUR-N8N-HOST/webhook/abc123-xyz
+// 3. Paste that URL into `webhookUrl` below (replacing the empty string).
+// 4. Wire downstream n8n nodes to: send email to `leadEmail`,
+//    push to a Google Sheet / CRM, ping Slack, etc.
+// 5. Until `webhookUrl` is filled in, the form auto-falls back to
+//    a structured `mailto:` so no leads are dropped.
+//
+const LINDY_CONFIG = {
+  // POST endpoint that receives form submissions. Could be an n8n
+  // production webhook, a Lindy/Zapier/Make webhook, or your own API.
+  // Leave as "" to disable the POST and fall through to the mailto fallback.
+  webhookUrl: "", // e.g. "https://YOUR-N8N-HOST/webhook/abc123-xyz"
+
+  // Where lead notification emails go (used as the mailto fallback +
+  // included in the webhook payload as `notifyEmail`). When the
+  // webhook is not configured, clicking Submit opens the user's mail
+  // client with a fully-formatted lead brief addressed here.
+  leadEmail: "ceokylehawkins@gmail.com",
+
+  // Optional: Lindy chat embed URL (used in the floating concierge).
+  // If empty, the concierge shows a placeholder ready for embed.
+  chatEmbedUrl: "", // e.g. "https://chat.lindy.ai/embed/abc123"
+
+  // Business types treated as "high priority" leads.
+  highPriorityTypes: ["Liquor store", "Wine / spirits shop", "Specialty retail"],
+};
+
+// ============================================================
+// MARKET BIAS — Manual Override (no live n8n yet)
+// ============================================================
+// Update these values by hand whenever your read of the market shifts.
+// They drive the "System Status" panel in The Lab section.
+// Allowed `tone`: "bullish" | "neutral" | "cautious"
+const MARKET_BIAS = {
+  label: "BFCM build-out — leaning Shopify migrations",
+  tone: "bullish",
+  updated: "April 2026",
+};
+
+// Helper: should this lead be flagged high priority?
+const isHighPriorityLead = (businessType) =>
+  LINDY_CONFIG.highPriorityTypes.includes(businessType);
+
+// ===== Form helpers =====
+const inputClass =
+  "w-full bg-white/[0.03] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] focus:ring-2 focus:ring-cyan-400/10 transition-all";
+
+const selectClass = `${inputClass} appearance-none bg-no-repeat bg-[right_0.75rem_center] pr-9 cursor-pointer`;
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs uppercase tracking-[0.14em] text-neutral-400">
+          {label}
+          {required && <span className="text-cyan-400 ml-1">*</span>}
+        </span>
+        {hint && <span className="text-[10px] text-neutral-600">{hint}</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function Portfolio() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mouse, setMouse] = useState({ x: 50, y: 30 });
+
+  // Quote form state
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    business: "",
+    businessType: "",
+    scope: [],
+    timeline: "",
+    budget: "",
+    message: "",
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  // Lindy concierge chat state
+  const [chatOpen, setChatOpen] = useState(false);
+
+  const updateField = (key, value) =>
+    setForm((f) => ({ ...f, [key]: value }));
+  const toggleScope = (s) =>
+    setForm((f) => ({
+      ...f,
+      scope: f.scope.includes(s)
+        ? f.scope.filter((x) => x !== s)
+        : [...f.scope, s],
+    }));
+
+  // Build a normalized lead payload for webhooks / email
+  const buildLeadPayload = () => {
+    const priority = isHighPriorityLead(form.businessType)
+      ? "HIGH"
+      : "STANDARD";
+    return {
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      business: form.business,
+      businessType: form.businessType,
+      scope: form.scope,
+      timeline: form.timeline,
+      budget: form.budget,
+      message: form.message,
+      priority,
+      isHighPriority: priority === "HIGH",
+      submittedAt: new Date().toISOString(),
+      source: "devataraxia.com / Request a Quote",
+      notifyEmail: LINDY_CONFIG.leadEmail,
+    };
+  };
+
+  // Build a mailto: fallback link (used if no webhook is configured,
+  // or as the user-visible "email me directly" option).
+  //
+  // The body is intentionally structured into bracketed sections so the
+  // recipient (you) can copy-paste the full email directly into Claude
+  // and ask for a fast triage / proposal-draft pass.
+  const buildLeadMailto = (payload) => {
+    const flag = payload.isHighPriority ? "[HIGH PRIORITY] " : "";
+    const subject = `${flag}New Ataraxia Lead — ${
+      payload.business || "Unnamed business"
+    }${payload.businessType ? ` (${payload.businessType})` : ""}`;
+
+    const priorityBanner = payload.isHighPriority
+      ? "⚡ HIGH PRIORITY LEAD — matches Ataraxia's target retail vertical (liquor / wine / specialty).\n\n"
+      : "";
+
+    const scopeList =
+      payload.scope && payload.scope.length
+        ? payload.scope.map((s) => `  - ${s}`).join("\n")
+        : "  - (none specified)";
+
+    const body =
+      `${priorityBanner}` +
+      `=== ATARAXIA STUDIO — INBOUND LEAD ===\n` +
+      `Submitted: ${payload.submittedAt}\n` +
+      `Source:    ${payload.source}\n` +
+      `Priority:  ${payload.priority}${
+        payload.isHighPriority ? " ⚡" : ""
+      }\n\n` +
+      `[CONTACT]\n` +
+      `Name:    ${payload.name || "—"}\n` +
+      `Email:   ${payload.email || "—"}\n` +
+      `Phone:   ${payload.phone || "—"}\n\n` +
+      `[BUSINESS]\n` +
+      `Name:    ${payload.business || "—"}\n\n` +
+      `[BUSINESS TYPE]\n` +
+      `${payload.businessType || "—"}\n\n` +
+      `[PROJECT SCOPE]\n` +
+      `${scopeList}\n\n` +
+      `[TIMELINE]\n` +
+      `${payload.timeline || "—"}\n\n` +
+      `[BUDGET]\n` +
+      `${payload.budget || "—"}\n\n` +
+      `[MESSAGE FROM PROSPECT]\n` +
+      `${payload.message || "—"}\n\n` +
+      `[RAW FORM DATA — JSON]\n` +
+      `${JSON.stringify(payload, null, 2)}\n\n` +
+      `=== END LEAD ===\n` +
+      `Tip: paste this entire email into Claude with the\n` +
+      `"Ataraxia lead triage" system prompt for a fast read.\n`;
+
+    return `mailto:${LINDY_CONFIG.leadEmail}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitError("");
+    setSubmitting(true);
+
+    const payload = buildLeadPayload();
+
+    try {
+      // Primary path: POST to Lindy / Zapier / your own webhook.
+      if (LINDY_CONFIG.webhookUrl) {
+        const res = await fetch(LINDY_CONFIG.webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      } else {
+        // Fallback path: open the user's mail client pre-filled to ceokylehawkins@gmail.com
+        // with a fully formatted lead brief — guarantees you receive the lead
+        // even before the Lindy webhook is wired up.
+        window.location.href = buildLeadMailto(payload);
+      }
+
+      // Always log locally for dev visibility
+      console.log("[Lead submitted]", payload);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Lead submission failed:", err);
+      setSubmitError(
+        "Connection issue. Please email ceokylehawkins@gmail.com directly."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      business: "",
+      businessType: "",
+      scope: [],
+      timeline: "",
+      budget: "",
+      message: "",
+    });
+    setSubmitted(false);
+    setSubmitError("");
+  };
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onMove = (e) =>
+      setMouse({
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100,
+      });
+    window.addEventListener("scroll", onScroll);
+    window.addEventListener("mousemove", onMove);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("mousemove", onMove);
+    };
+  }, []);
+
+  // Smooth-scroll handler with offset for the fixed nav (h-16 = 64px).
+  // Falls back gracefully if the target id isn't on this page.
+  const handleNavClick = (e, href) => {
+    if (!href || !href.startsWith("#")) return;
+    const id = href.slice(1);
+    const el = document.getElementById(id);
+    if (!el) return; // let the browser do nothing rather than navigate
+    e.preventDefault();
+    const top =
+      el.getBoundingClientRect().top + window.scrollY - 72; // 64 nav + 8 breathing room
+    window.scrollTo({ top, behavior: "smooth" });
+    // Update the URL hash without jumping
+    if (history.replaceState) history.replaceState(null, "", href);
+    setMenuOpen(false);
+  };
+
+  const navLinks = [
+    { label: "Home", href: "#home" },
+    { label: "The Lab", href: "#lab" },
+    { label: "Services", href: "#services" },
+    { label: "Contact", href: "#contact" },
+  ];
+
+  const services = [
+    {
+      icon: ShoppingBag,
+      title: "Shopify & POS Integration",
+      tag: "Commerce Engineering",
+      description:
+        "Unified retail systems that bridge in-store and online operations. Custom Shopify apps, real-time inventory sync, and POS integrations engineered for scale.",
+      capabilities: [
+        "Headless Shopify storefronts",
+        "Real-time inventory & order sync",
+        "Custom POS workflows",
+        "Multi-location architecture",
+      ],
+    },
+    {
+      icon: Bot,
+      title: "Custom AI Agents",
+      tag: "Applied Intelligence",
+      description:
+        "Production-grade AI agents tailored to your operations. From customer support automation to internal copilots — built with modern LLM infrastructure and reliable evaluation.",
+      capabilities: [
+        "RAG & tool-use pipelines",
+        "Workflow automation agents",
+        "Domain-specific copilots",
+        "Eval & monitoring systems",
+      ],
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans antialiased selection:bg-cyan-400/30 selection:text-white relative overflow-x-hidden">
+      {/* Ambient gradient field */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-60"
+        style={{
+          background: `radial-gradient(600px circle at ${mouse.x}% ${mouse.y}%, rgba(34,211,238,0.08), transparent 40%)`,
+        }}
+      />
+      {/* Grid texture */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
+      {/* Top glow */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full z-0" />
+
+      {/* ===================== NAVIGATION ===================== */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-neutral-950/70 backdrop-blur-xl border-b border-white/5"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+          <a
+            href="#home"
+            onClick={(e) => handleNavClick(e, "#home")}
+            className="flex items-center gap-2 group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <Terminal className="w-4 h-4 text-neutral-950" strokeWidth={2.5} />
+            </div>
+            <span className="text-sm font-medium tracking-tight text-neutral-200 group-hover:text-white transition-colors">
+              ataraxia<span className="text-cyan-400">.dev</span>
+            </span>
+          </a>
+
+          <ul className="hidden md:flex items-center gap-1">
+            {navLinks.map((l) => (
+              <li key={l.label}>
+                <a
+                  href={l.href}
+                  onClick={(e) => handleNavClick(e, l.href)}
+                  className="px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden md:flex items-center gap-3">
+            <a
+              href="#contact"
+              onClick={(e) => handleNavClick(e, "#contact")}
+              className="group inline-flex items-center gap-1.5 text-xs font-medium text-neutral-950 bg-white hover:bg-cyan-300 transition-colors px-4 py-2 rounded-md"
+            >
+              Start a project
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </a>
+          </div>
+
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="md:hidden w-9 h-9 inline-flex items-center justify-center rounded-md text-neutral-300 hover:bg-white/5"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {menuOpen && (
+          <div className="md:hidden border-t border-white/5 bg-neutral-950/90 backdrop-blur-xl">
+            <div className="px-6 py-4 flex flex-col gap-1">
+              {navLinks.map((l) => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={(e) => handleNavClick(e, l.href)}
+                  className="px-3 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-md"
+                >
+                  {l.label}
+                </a>
+              ))}
+              <a
+                href="#contact"
+                onClick={(e) => handleNavClick(e, "#contact")}
+                className="mt-2 px-3 py-2.5 text-sm font-medium text-neutral-950 bg-white rounded-md text-center"
+              >
+                Start a project
+              </a>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* ===================== HERO ===================== */}
+      <section
+        id="home"
+        className="relative z-10 pt-40 pb-32 px-6 lg:px-10 max-w-7xl mx-auto scroll-mt-24"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-xs text-neutral-400 mb-8">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+          </span>
+          Now booking Q3 — 2 slots remaining
+        </div>
+
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.05] max-w-5xl">
+          Bridging{" "}
+          <span className="text-neutral-500">Retail</span> &amp;{" "}
+          <span className="bg-gradient-to-r from-cyan-300 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            Digital Innovation
+          </span>
+        </h1>
+
+        <p className="mt-8 text-lg text-neutral-400 max-w-2xl leading-relaxed">
+          A boutique engineering studio building the systems behind modern
+          commerce — from headless storefronts and POS integrations to AI agents
+          that quietly run your operations.
+        </p>
+
+        <div className="mt-10 flex flex-wrap items-center gap-3">
+          <a
+            href="#services"
+            onClick={(e) => handleNavClick(e, "#services")}
+            className="group inline-flex items-center gap-2 bg-white text-neutral-950 hover:bg-cyan-300 transition-colors px-5 py-3 rounded-md text-sm font-medium"
+          >
+            Explore services
+            <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </a>
+          <a
+            href="#lab"
+            onClick={(e) => handleNavClick(e, "#lab")}
+            className="inline-flex items-center gap-2 border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors px-5 py-3 rounded-md text-sm font-medium text-neutral-200"
+          >
+            Visit the lab
+          </a>
+        </div>
+
+        {/* Stat strip */}
+        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 border border-white/5 rounded-xl overflow-hidden">
+          {[
+            { v: "40+", l: "Shopify deployments" },
+            { v: "12", l: "AI agents in production" },
+            { v: "99.97%", l: "Uptime across systems" },
+            { v: "8 yrs", l: "Building commerce tools" },
+          ].map((s) => (
+            <div
+              key={s.l}
+              className="bg-neutral-950 px-6 py-6"
+            >
+              <div className="text-2xl font-medium tracking-tight text-white">
+                {s.v}
+              </div>
+              <div className="mt-1 text-xs text-neutral-500 uppercase tracking-wider">
+                {s.l}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===================== SERVICES ===================== */}
+      <section
+        id="services"
+        className="relative z-10 py-32 px-6 lg:px-10 max-w-7xl mx-auto scroll-mt-24"
+      >
+        <div className="flex items-end justify-between flex-wrap gap-6 mb-16">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-cyan-400 uppercase tracking-[0.2em] mb-4">
+              <Zap className="w-3.5 h-3.5" />
+              Specialized Services
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-medium tracking-tight max-w-2xl">
+              Two disciplines.{" "}
+              <span className="text-neutral-500">One studio.</span>
+            </h2>
+          </div>
+          <p className="text-sm text-neutral-400 max-w-sm leading-relaxed">
+            We don't do everything. We do two things deeply — the parts of
+            modern retail that are hardest to get right.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {services.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div
+                key={s.title}
+                className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-8 lg:p-10 overflow-hidden hover:border-white/20 transition-all duration-500"
+              >
+                {/* hover glow */}
+                <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                {/* top hairline */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+                <div className="relative">
+                  <div className="flex items-start justify-between mb-8">
+                    <div className="w-12 h-12 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-center group-hover:border-cyan-400/30 group-hover:bg-cyan-400/5 transition-colors">
+                      <Icon
+                        className="w-5 h-5 text-cyan-300"
+                        strokeWidth={1.75}
+                      />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 border border-white/10 rounded-full px-2.5 py-1">
+                      {s.tag}
+                    </span>
+                  </div>
+
+                  <h3 className="text-2xl font-medium tracking-tight text-white">
+                    {s.title}
+                  </h3>
+                  <p className="mt-4 text-sm text-neutral-400 leading-relaxed">
+                    {s.description}
+                  </p>
+
+                  <ul className="mt-8 space-y-3 border-t border-white/5 pt-6">
+                    {s.capabilities.map((c) => (
+                      <li
+                        key={c}
+                        className="flex items-center gap-3 text-sm text-neutral-300"
+                      >
+                        <GitBranch
+                          className="w-3.5 h-3.5 text-cyan-400/70 flex-shrink-0"
+                          strokeWidth={2}
+                        />
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <a
+                    href="#contact"
+                    onClick={(e) => handleNavClick(e, "#contact")}
+                    className="mt-10 inline-flex items-center gap-1.5 text-sm text-white group/cta"
+                  >
+                    <span className="border-b border-white/20 group-hover/cta:border-cyan-400 transition-colors pb-0.5">
+                      Discuss a project
+                    </span>
+                    <ArrowUpRight className="w-4 h-4 text-cyan-400 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ----- Current Sprint / Featured Project ----- */}
+        <div className="mt-8 group relative rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-400/[0.05] via-white/[0.02] to-white/[0.01] backdrop-blur-2xl p-8 lg:p-10 overflow-hidden">
+          {/* corner glow */}
+          <div className="pointer-events-none absolute -top-32 -left-24 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+
+          <div className="relative grid lg:grid-cols-5 gap-8 items-start">
+            {/* Left: badge + status */}
+            <div className="lg:col-span-2">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-[10px] uppercase tracking-[0.18em] text-cyan-300 mb-5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+                </span>
+                Current Sprint · Live Engagement
+              </div>
+              <h3 className="text-2xl lg:text-3xl font-medium tracking-tight text-white leading-snug">
+                POS to Shopify Migration{" "}
+                <span className="text-neutral-400">
+                  for a Premium Spirits Retailer
+                </span>
+              </h3>
+              <p className="mt-4 text-sm text-neutral-400 leading-relaxed">
+                A specialized engagement underway right now — moving a high-SKU
+                liquor retailer from a legacy point-of-sale onto a headless
+                Shopify storefront with real-time inventory parity. This is
+                exactly the kind of work we take on.
+              </p>
+            </div>
+
+            {/* Right: sprint details */}
+            <div className="lg:col-span-3 grid sm:grid-cols-2 gap-3">
+              {[
+                {
+                  label: "Scope",
+                  value: "POS → Shopify migration",
+                  icon: ShoppingBag,
+                },
+                {
+                  label: "Stack",
+                  value: "Headless Shopify · Custom sync layer",
+                  icon: Terminal,
+                },
+                {
+                  label: "Inventory",
+                  value: "1,800+ SKUs reconciled live",
+                  icon: GitBranch,
+                },
+                {
+                  label: "Phase",
+                  value: "Pilot store live · rollout in progress",
+                  icon: Activity,
+                },
+              ].map((d) => {
+                const Icon = d.icon;
+                return (
+                  <div
+                    key={d.label}
+                    className="rounded-xl border border-white/5 bg-white/[0.02] p-4"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-neutral-500 mb-2">
+                      <Icon
+                        className="w-3 h-3 text-cyan-400/80"
+                        strokeWidth={2}
+                      />
+                      {d.label}
+                    </div>
+                    <div className="text-sm text-white">{d.value}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="relative mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p className="text-xs text-neutral-500">
+              Confidential client. Case study available on request after
+              engagement wraps.
+            </p>
+            <a
+              href="#contact"
+              onClick={(e) => handleNavClick(e, "#contact")}
+              className="inline-flex items-center gap-1.5 text-sm text-white group/cta self-start sm:self-auto"
+            >
+              <span className="border-b border-white/20 group-hover/cta:border-cyan-400 transition-colors pb-0.5">
+                Need the same migration?
+              </span>
+              <ArrowUpRight className="w-4 h-4 text-cyan-400 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== MAINTENANCE & GROWTH ===================== */}
+      <section
+        id="maintenance"
+        className="relative z-10 py-32 px-6 lg:px-10 max-w-7xl mx-auto"
+      >
+        <div className="flex items-end justify-between flex-wrap gap-6 mb-16">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-cyan-400 uppercase tracking-[0.2em] mb-4">
+              <Wrench className="w-3.5 h-3.5" />
+              Maintenance &amp; Growth
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-medium tracking-tight max-w-3xl leading-[1.1]">
+              Built once.{" "}
+              <span className="text-neutral-500">Looked after for good.</span>
+            </h2>
+          </div>
+          <p className="text-sm text-neutral-400 max-w-md leading-relaxed">
+            A simple model built for retail operators — one fee to build the
+            system right, then a level of monthly care that fits your shop.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ----- Build Fee Card ----- */}
+          <div className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-8 lg:p-10 overflow-hidden hover:border-white/20 transition-all duration-500">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+            <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+            <div className="relative">
+              <div className="flex items-start justify-between mb-8">
+                <div className="w-12 h-12 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-center group-hover:border-cyan-400/30 group-hover:bg-cyan-400/5 transition-colors">
+                  <Hammer
+                    className="w-5 h-5 text-cyan-300"
+                    strokeWidth={1.75}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 border border-white/10 rounded-full px-2.5 py-1">
+                  One-Time
+                </span>
+              </div>
+
+              <h3 className="text-2xl font-medium tracking-tight text-white">
+                Build Fee
+              </h3>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-3xl font-medium tracking-tight text-white">
+                  Custom Quote
+                </span>
+                <span className="text-sm text-neutral-500">
+                  scoped to your business
+                </span>
+              </div>
+
+              <p className="mt-5 text-sm text-neutral-400 leading-relaxed">
+                A flat, one-time investment for a custom website and integration
+                built specifically for your storefront. We scope every project
+                against your real operations — square footage, SKU count,
+                checkout flow, and the way your team actually works behind the
+                counter.
+              </p>
+
+              <ul className="mt-8 space-y-3 border-t border-white/5 pt-6">
+                {[
+                  "Custom website tailored to your brand and inventory",
+                  "Shopify or POS integration with your existing systems",
+                  "Real-time inventory and product sync configured end-to-end",
+                  "Staff training and clean handover documentation",
+                  "30-day post-launch warranty on everything we ship",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-3 text-sm text-neutral-300"
+                  >
+                    <Check
+                      className="w-4 h-4 text-cyan-400/80 flex-shrink-0 mt-0.5"
+                      strokeWidth={2.5}
+                    />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href="#contact"
+                onClick={(e) => handleNavClick(e, "#contact")}
+                className="mt-10 inline-flex items-center gap-1.5 text-sm text-white group/cta"
+              >
+                <span className="border-b border-white/20 group-hover/cta:border-cyan-400 transition-colors pb-0.5">
+                  Request a quote
+                </span>
+                <ArrowUpRight className="w-4 h-4 text-cyan-400 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+              </a>
+            </div>
+          </div>
+
+          {/* ----- Smooth Operator Card (Baseline) ----- */}
+          <div className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-8 lg:p-10 overflow-hidden hover:border-white/20 transition-all duration-500">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+            <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/10 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+            <div className="relative">
+              <div className="flex items-start justify-between mb-8">
+                <div className="w-12 h-12 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md flex items-center justify-center group-hover:border-cyan-400/30 group-hover:bg-cyan-400/5 transition-colors">
+                  <ShieldCheck
+                    className="w-5 h-5 text-cyan-300"
+                    strokeWidth={1.75}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 border border-white/10 rounded-full px-2.5 py-1">
+                  Maintenance
+                </span>
+              </div>
+
+              <h3 className="text-2xl font-medium tracking-tight text-white">
+                Smooth Operator
+              </h3>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-4xl font-medium tracking-tight text-white">
+                  $350
+                </span>
+                <span className="text-sm text-neutral-400">/ month</span>
+              </div>
+              <div className="mt-1 text-xs text-neutral-500">
+                cancel anytime · no annual contract
+              </div>
+
+              <p className="mt-5 text-sm text-neutral-300 leading-relaxed">
+                Reliable infrastructure for retail. We monitor your
+                POS-to-Shopify bridge 24/7. If a bottle sells in-store, we
+                ensure it's removed from your website instantly so you never
+                have to apologize to a customer for an out-of-stock item.
+              </p>
+
+              <ul className="mt-8 space-y-3 border-t border-white/5 pt-6">
+                {[
+                  {
+                    icon: Activity,
+                    label: "Managed hosting",
+                    detail:
+                      "Fast, reliable infrastructure with 24/7 uptime monitoring.",
+                  },
+                  {
+                    icon: ShieldCheck,
+                    label: "Security & software updates",
+                    detail:
+                      "Patches, certificates, and platform updates applied quietly in the background.",
+                  },
+                  {
+                    icon: GitBranch,
+                    label: "Inventory sync monitoring",
+                    detail:
+                      "Active checks on your POS-to-website sync so an oversell never makes the news.",
+                  },
+                  {
+                    icon: Wrench,
+                    label: "Priority support",
+                    detail:
+                      "A real human on email — same-business-day response when something needs attention.",
+                  },
+                  {
+                    icon: Zap,
+                    label: "Quarterly health report",
+                    detail:
+                      "A plain-English summary of your store's performance and what to fix next.",
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li
+                      key={item.label}
+                      className="flex items-start gap-3 text-sm"
+                    >
+                      <div className="w-5 h-5 rounded-md bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Icon
+                          className="w-3 h-3 text-cyan-300"
+                          strokeWidth={2}
+                        />
+                      </div>
+                      <div>
+                        <span className="text-white font-medium">
+                          {item.label}
+                        </span>
+                        <span className="text-neutral-400">
+                          {" — "}
+                          {item.detail}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <a
+                href="#contact"
+                onClick={(e) => handleNavClick(e, "#contact")}
+                className="mt-10 inline-flex items-center gap-1.5 text-sm text-white group/cta"
+              >
+                <span className="border-b border-white/20 group-hover/cta:border-cyan-400 transition-colors pb-0.5">
+                  Start Smooth Operator
+                </span>
+                <ArrowUpRight className="w-4 h-4 text-cyan-400 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+              </a>
+            </div>
+          </div>
+
+          {/* ----- Smooth Operator Pro Card (Featured) ----- */}
+          <div className="group relative rounded-2xl border border-cyan-400/30 bg-gradient-to-b from-cyan-400/[0.06] to-white/[0.02] backdrop-blur-2xl p-8 lg:p-10 overflow-hidden hover:border-cyan-400/50 transition-all duration-500">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+            <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/20 blur-3xl rounded-full" />
+
+            <div className="relative">
+              <div className="flex items-start justify-between mb-8">
+                <div className="w-12 h-12 rounded-xl border border-cyan-400/30 bg-cyan-400/10 backdrop-blur-md flex items-center justify-center">
+                  <TrendingUp
+                    className="w-5 h-5 text-cyan-300"
+                    strokeWidth={1.75}
+                  />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300 border border-cyan-400/30 bg-cyan-400/10 rounded-full px-2.5 py-1">
+                  Recommended
+                </span>
+              </div>
+
+              <h3 className="text-2xl font-medium tracking-tight text-white">
+                Smooth Operator{" "}
+                <span className="text-cyan-300">Pro</span>
+              </h3>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="text-4xl font-medium tracking-tight text-white">
+                  $799
+                </span>
+                <span className="text-sm text-neutral-400">/ month</span>
+              </div>
+              <div className="mt-1 text-xs text-neutral-500">
+                cancel anytime · no annual contract
+              </div>
+
+              <p className="mt-5 text-sm text-neutral-300 leading-relaxed">
+                Maintenance plus active growth work. For shops that want a
+                small, dedicated team treating their storefront like an asset
+                that should keep getting better — not just keep running.
+              </p>
+
+              <div className="mt-8 border-t border-cyan-400/10 pt-6">
+                <div className="flex items-center gap-2 text-xs text-cyan-300 uppercase tracking-[0.18em] mb-4">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Everything in Smooth Operator, plus
+                </div>
+                <ul className="space-y-3">
+                  {[
+                    {
+                      icon: Wrench,
+                      label: "3 hours of dev work each month",
+                      detail:
+                        "Small changes, content updates, new pages, banner swaps — handled.",
+                    },
+                    {
+                      icon: TrendingUp,
+                      label: "SEO & product page optimization",
+                      detail:
+                        "Monthly improvements to titles, descriptions, and on-page metadata to win more local search.",
+                    },
+                    {
+                      icon: Mail,
+                      label: "Email marketing flows",
+                      detail:
+                        "Welcome series, abandoned cart, and win-back automations — set up, monitored, and tuned.",
+                    },
+                    {
+                      icon: Activity,
+                      label: "Monthly strategy call",
+                      detail:
+                        "30 minutes with us to review performance and decide the next move.",
+                    },
+                    {
+                      icon: Zap,
+                      label: "Same-business-hour support",
+                      detail:
+                        "Faster response times for urgent issues during business hours.",
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <li
+                        key={item.label}
+                        className="flex items-start gap-3 text-sm"
+                      >
+                        <div className="w-5 h-5 rounded-md bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Icon
+                            className="w-3 h-3 text-cyan-300"
+                            strokeWidth={2}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-white font-medium">
+                            {item.label}
+                          </span>
+                          <span className="text-neutral-400">
+                            {" — "}
+                            {item.detail}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <a
+                href="#contact"
+                onClick={(e) => handleNavClick(e, "#contact")}
+                className="mt-10 group/cta inline-flex items-center gap-2 bg-white text-neutral-950 hover:bg-cyan-300 transition-colors px-5 py-3 rounded-md text-sm font-medium"
+              >
+                Start Smooth Operator Pro
+                <ArrowUpRight className="w-4 h-4 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 transition-transform" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Reassurance strip — speaks directly to retail owners */}
+        <div className="mt-10 rounded-2xl border border-white/5 bg-white/[0.02] backdrop-blur-md p-6 lg:p-8 flex flex-col md:flex-row md:items-center gap-6">
+          <div className="w-10 h-10 rounded-lg bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center flex-shrink-0">
+            <ShieldCheck
+              className="w-5 h-5 text-emerald-300"
+              strokeWidth={1.75}
+            />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-neutral-300 leading-relaxed">
+              <span className="text-white font-medium">
+                Built for shops that can't afford downtime.
+              </span>{" "}
+              Liquor stores, specialty retailers, and family-run shops trust
+              Smooth Operator because a website outage on a Friday night is a
+              real loss — and an unnoticed inventory mismatch is a worse one.
+              We watch the boring stuff so you can run the store.
+            </p>
+          </div>
+          <a
+            href="#contact"
+            onClick={(e) => handleNavClick(e, "#contact")}
+            className="inline-flex items-center gap-2 border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors px-4 py-2.5 rounded-md text-sm font-medium text-neutral-200 self-start md:self-auto"
+          >
+            Talk to us
+          </a>
+        </div>
+      </section>
+
+      {/* ===================== LAB TEASER ===================== */}
+      <section
+        id="lab"
+        className="relative z-10 py-24 px-6 lg:px-10 max-w-7xl mx-auto scroll-mt-24"
+      >
+        <div className="flex items-end justify-between flex-wrap gap-6 mb-12">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-cyan-400 uppercase tracking-[0.2em] mb-4 font-mono">
+              <Terminal className="w-3.5 h-3.5" />
+              From The Lab
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-medium tracking-tight max-w-2xl leading-[1.1]">
+              Side projects.{" "}
+              <span className="text-neutral-500">Public experiments.</span>
+            </h2>
+          </div>
+          <a
+            href="/lab"
+            className="group inline-flex items-center gap-1.5 text-sm text-white self-start"
+          >
+            <span className="border-b border-white/20 group-hover:border-cyan-400 transition-colors pb-0.5">
+              Visit the full Lab
+            </span>
+            <ArrowUpRight className="w-4 h-4 text-cyan-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </a>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            {
+              title: 'Project: "Vanish"',
+              category: "Game",
+              status: "Internal Alpha",
+              statusClass:
+                "bg-rose-400/10 text-rose-300 border-rose-400/20",
+              buildId: "VNSH-024",
+              description:
+                "A high-speed physics-based platformer built in Unity.",
+              gradient: "from-rose-500/25 via-orange-500/15 to-transparent",
+            },
+            {
+              title: "SmartRetail Agent",
+              category: "AI Tool",
+              status: "In-Dev",
+              statusClass:
+                "bg-cyan-400/10 text-cyan-300 border-cyan-400/20",
+              buildId: "SMRT-009",
+              description:
+                "An AI assistant that analyzes Shopify sales data to predict liquor restock needs.",
+              gradient: "from-cyan-500/25 via-blue-500/15 to-transparent",
+            },
+            {
+              title: "E-comm Skeleton",
+              category: "Website",
+              status: "Live",
+              statusClass:
+                "bg-emerald-400/10 text-emerald-300 border-emerald-400/20",
+              buildId: "SKEL-001",
+              description:
+                "A high-performance React template for retail businesses.",
+              gradient:
+                "from-emerald-500/25 via-teal-500/15 to-transparent",
+            },
+          ].map((p) => (
+            <article
+              key={p.title}
+              className="group relative rounded-2xl border border-dashed border-white/15 bg-white/[0.02] backdrop-blur-2xl overflow-hidden hover:border-cyan-400/40 hover:bg-white/[0.04] transition-all duration-500 flex flex-col"
+            >
+              {/* corner crosshairs */}
+              <div className="pointer-events-none absolute top-2 left-2 w-3 h-3 border-t border-l border-cyan-400/40" />
+              <div className="pointer-events-none absolute top-2 right-2 w-3 h-3 border-t border-r border-cyan-400/40" />
+              <div className="pointer-events-none absolute bottom-2 left-2 w-3 h-3 border-b border-l border-cyan-400/40" />
+              <div className="pointer-events-none absolute bottom-2 right-2 w-3 h-3 border-b border-r border-cyan-400/40" />
+
+              <div
+                className={`relative aspect-[16/8] bg-gradient-to-br ${p.gradient} border-b border-dashed border-white/10`}
+              >
+                <div
+                  className="absolute inset-0 opacity-[0.07]"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div className="absolute top-3 left-3 text-[10px] font-mono text-neutral-300 bg-neutral-950/60 backdrop-blur-md border border-white/10 rounded px-2 py-0.5">
+                  {p.buildId}
+                </div>
+                <div className="absolute top-3 right-3">
+                  <span
+                    className={`text-[10px] uppercase tracking-[0.16em] font-medium border rounded-full px-2.5 py-1 backdrop-blur-md ${p.statusClass}`}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-5 flex flex-col flex-1">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-400/80 font-mono mb-2">
+                  // {p.category}
+                </span>
+                <h3 className="text-lg font-medium tracking-tight text-white">
+                  {p.title}
+                </h3>
+                <p className="mt-2 text-sm text-neutral-400 leading-relaxed flex-1">
+                  {p.description}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* ----- System Status (Manual Override) ----- */}
+        <SystemStatus bias={MARKET_BIAS} />
+      </section>
+
+      {/* ===================== QUOTE FORM / CONTACT ===================== */}
+      <section
+        id="contact"
+        className="relative z-10 py-24 px-6 lg:px-10 max-w-7xl mx-auto scroll-mt-24"
+      >
+        <div className="grid lg:grid-cols-5 gap-10 lg:gap-16">
+          {/* --- Sidebar / Intro --- */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 uppercase tracking-[0.2em] mb-5">
+              <Send className="w-3.5 h-3.5" />
+              Request a Quote
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-medium tracking-tight leading-[1.1]">
+              Tell us about your shop.{" "}
+              <span className="text-neutral-500">
+                We'll come back with a plan.
+              </span>
+            </h2>
+            <p className="mt-6 text-sm text-neutral-400 leading-relaxed">
+              Fill in what you know — even if it's rough. We take on a small
+              number of engagements each quarter, so the more honest detail you
+              share, the better we can size the work and respond with something
+              useful.
+            </p>
+
+            <div className="mt-10 space-y-4">
+              {[
+                {
+                  n: "01",
+                  t: "We read every submission",
+                  d: "A real person reviews your message, usually within 48 hours.",
+                },
+                {
+                  n: "02",
+                  t: "Quick discovery call",
+                  d: "30 minutes on Zoom or phone — no obligation, no slide deck.",
+                },
+                {
+                  n: "03",
+                  t: "Written proposal",
+                  d: "Clear scope, fixed Build Fee, and a recommended Smooth Operator tier.",
+                },
+              ].map((s) => (
+                <div
+                  key={s.n}
+                  className="flex gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02]"
+                >
+                  <span className="font-mono text-xs text-cyan-400/80 mt-0.5">
+                    {s.n}
+                  </span>
+                  <div>
+                    <div className="text-sm font-medium text-white">{s.t}</div>
+                    <div className="mt-1 text-xs text-neutral-400 leading-relaxed">
+                      {s.d}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 pt-8 border-t border-white/5">
+              <div className="text-xs uppercase tracking-[0.18em] text-neutral-500 mb-4">
+                Or reach us directly
+              </div>
+              <a
+                href="mailto:ceokylehawkins@gmail.com"
+                className="inline-flex items-center gap-2 text-white font-medium border-b border-white/20 hover:border-cyan-400 transition-colors pb-1"
+              >
+                <Mail className="w-4 h-4 text-cyan-400" />
+                ceokylehawkins@gmail.com
+              </a>
+              <div className="mt-6 flex items-center gap-5 text-sm text-neutral-400">
+                <a href="#" className="hover:text-white transition-colors">
+                  GitHub
+                </a>
+                <a href="#" className="hover:text-white transition-colors">
+                  LinkedIn
+                </a>
+                <a href="#" className="hover:text-white transition-colors">
+                  Read.cv
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* --- Form Card --- */}
+          <div className="lg:col-span-3">
+            <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-6 sm:p-8 lg:p-10 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full" />
+
+              {submitted ? (
+                <div className="relative text-center py-12">
+                  <div className="w-16 h-16 mx-auto rounded-2xl border border-emerald-400/30 bg-emerald-400/10 flex items-center justify-center mb-6 relative">
+                    <CheckCircle2
+                      className="w-8 h-8 text-emerald-300"
+                      strokeWidth={1.75}
+                    />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full border border-cyan-400/40 bg-neutral-950 flex items-center justify-center">
+                      <Bot
+                        className="w-3.5 h-3.5 text-cyan-300"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-medium tracking-tight text-white">
+                    Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""}.
+                  </h3>
+                  <p className="mt-3 text-sm text-neutral-300 max-w-sm mx-auto leading-relaxed">
+                    My AI assistant,{" "}
+                    <span className="text-cyan-300 font-medium">Lindy</span>,
+                    is reviewing your request.{" "}
+                    <span className="text-white">
+                      Expect a text or email shortly.
+                    </span>
+                  </p>
+                  {isHighPriorityLead(form.businessType) && (
+                    <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-xs text-cyan-200">
+                      <Zap
+                        className="w-3 h-3 text-cyan-300"
+                        strokeWidth={2.5}
+                      />
+                      Flagged High Priority — same-day human follow-up
+                    </div>
+                  )}
+                  <button
+                    onClick={resetForm}
+                    className="mt-8 inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors px-4 py-2 rounded-md"
+                  >
+                    Submit another request
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="relative space-y-6">
+                  {/* Row 1: name + email */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Field label="Your name" required>
+                      <input
+                        type="text"
+                        required
+                        value={form.name}
+                        onChange={(e) => updateField("name", e.target.value)}
+                        placeholder="Jordan Reyes"
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="Email" required>
+                      <input
+                        type="email"
+                        required
+                        value={form.email}
+                        onChange={(e) => updateField("email", e.target.value)}
+                        placeholder="you@yourshop.com"
+                        className={inputClass}
+                      />
+                    </Field>
+                  </div>
+
+                  {/* Row 1.5: phone (optional but recommended for SMS notifications) */}
+                  <Field
+                    label="Phone"
+                    hint="Optional — best for SMS lead alerts"
+                  >
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => updateField("phone", e.target.value)}
+                      placeholder="(555) 123-4567"
+                      className={inputClass}
+                    />
+                  </Field>
+
+                  {/* Row 2: business + type */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Field label="Business name" required>
+                      <input
+                        type="text"
+                        required
+                        value={form.business}
+                        onChange={(e) =>
+                          updateField("business", e.target.value)
+                        }
+                        placeholder="Reyes Wine & Spirits"
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="Business type" required>
+                      <select
+                        required
+                        value={form.businessType}
+                        onChange={(e) =>
+                          updateField("businessType", e.target.value)
+                        }
+                        className={selectClass}
+                      >
+                        <option value="" disabled>
+                          Select one…
+                        </option>
+                        <option>Liquor store</option>
+                        <option>Wine / spirits shop</option>
+                        <option>Specialty retail</option>
+                        <option>Restaurant / café</option>
+                        <option>Boutique</option>
+                        <option>Other</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  {/* Hidden lead-priority indicator (also sent in payload as `priority`) */}
+                  <input
+                    type="hidden"
+                    name="lead_priority"
+                    value={
+                      isHighPriorityLead(form.businessType)
+                        ? "HIGH"
+                        : "STANDARD"
+                    }
+                  />
+
+                  {/* Visible priority pill — gives the user a small signal that
+                      they'll be routed to a faster human response. */}
+                  {isHighPriorityLead(form.businessType) && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-cyan-400/30 bg-cyan-400/5 text-xs text-cyan-200">
+                      <Zap
+                        className="w-3.5 h-3.5 text-cyan-300"
+                        strokeWidth={2}
+                      />
+                      <span>
+                        Retail lead — flagged{" "}
+                        <span className="font-medium">High Priority</span>.
+                        You'll get a same-day response from a real person.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Scope checkboxes */}
+                  <Field label="What do you need?" hint="Select all that apply">
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {[
+                        "New website",
+                        "Shopify or POS integration",
+                        "Custom AI agent",
+                        "Maintenance & growth plan",
+                        "Something else",
+                      ].map((opt) => {
+                        const active = form.scope.includes(opt);
+                        return (
+                          <button
+                            type="button"
+                            key={opt}
+                            onClick={() => toggleScope(opt)}
+                            className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm text-left transition-all ${
+                              active
+                                ? "border-cyan-400/40 bg-cyan-400/[0.08] text-white"
+                                : "border-white/10 bg-white/[0.02] text-neutral-300 hover:border-white/20 hover:bg-white/[0.04]"
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                                active
+                                  ? "border-cyan-400 bg-cyan-400"
+                                  : "border-white/20"
+                              }`}
+                            >
+                              {active && (
+                                <Check
+                                  className="w-3 h-3 text-neutral-950"
+                                  strokeWidth={3}
+                                />
+                              )}
+                            </span>
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+
+                  {/* Row 3: timeline + budget */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Field label="Timeline">
+                      <select
+                        value={form.timeline}
+                        onChange={(e) =>
+                          updateField("timeline", e.target.value)
+                        }
+                        className={selectClass}
+                      >
+                        <option value="" disabled>
+                          When do you need this?
+                        </option>
+                        <option>ASAP</option>
+                        <option>1–3 months</option>
+                        <option>3–6 months</option>
+                        <option>Just exploring</option>
+                      </select>
+                    </Field>
+                    <Field label="Estimated budget">
+                      <select
+                        value={form.budget}
+                        onChange={(e) => updateField("budget", e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="" disabled>
+                          Pick a range
+                        </option>
+                        <option>Under $5K</option>
+                        <option>$5K – $15K</option>
+                        <option>$15K – $30K</option>
+                        <option>$30K+</option>
+                        <option>Not sure yet</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  {/* Message */}
+                  <Field
+                    label="Tell us about your project"
+                    hint="A few lines is plenty"
+                  >
+                    <textarea
+                      rows={5}
+                      value={form.message}
+                      onChange={(e) => updateField("message", e.target.value)}
+                      placeholder="What are you trying to accomplish? What's not working today? Any platforms you're already using?"
+                      className={`${inputClass} resize-none`}
+                    />
+                  </Field>
+
+                  {submitError && (
+                    <div className="text-xs text-rose-300 bg-rose-400/5 border border-rose-400/20 rounded-lg px-3 py-2">
+                      {submitError}{" "}
+                      <a
+                        href={buildLeadMailto(buildLeadPayload())}
+                        className="underline hover:text-rose-200"
+                      >
+                        Email {LINDY_CONFIG.leadEmail}
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="group inline-flex items-center justify-center gap-2 bg-white text-neutral-950 hover:bg-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors px-6 py-3 rounded-md text-sm font-medium"
+                    >
+                      {submitting ? "Sending…" : "Send request"}
+                      <Send className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                    <span className="text-xs text-neutral-500">
+                      Routed straight to my AI assistant, Lindy. We'll never
+                      share your details.
+                    </span>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== FOOTER ===================== */}
+      <footer className="relative z-10 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-6 flex items-center justify-between text-xs text-neutral-600">
+          <span>© 2026 Ataraxia Studio. All rights reserved.</span>
+          <span className="font-mono">v1.0.0 · built with care</span>
+        </div>
+      </footer>
+
+      {/* ===================== LINDY CONCIERGE ===================== */}
+      <LindyConcierge open={chatOpen} setOpen={setChatOpen} />
+    </div>
+  );
+}
+
+// ============================================================
+// LINDY CONCIERGE — floating AI Assistant button + chat panel.
+// Designed to host a Lindy.ai chat embed (or any other widget).
+// Drop a real embed URL into LINDY_CONFIG.chatEmbedUrl above
+// to swap the placeholder for the live widget.
+// ============================================================
+function LindyConcierge({ open, setOpen }) {
+  return (
+    <>
+      {/* Floating launcher button — sits above all sections incl. CTAs.
+          Mobile: a hair lower-right + extra inset so it doesn't visually
+          collide with full-width "Start a project" buttons. */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "Close AI assistant" : "Open AI assistant"}
+        className="fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-[70] group"
+        style={{
+          bottom: "max(1.25rem, env(safe-area-inset-bottom))",
+          right: "max(1rem, env(safe-area-inset-right))",
+        }}
+      >
+        <span className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:scale-105">
+          {/* Pulse ring */}
+          {!open && (
+            <span className="absolute inset-0 rounded-full border-2 border-cyan-400/40 animate-ping" />
+          )}
+          {open ? (
+            <X className="w-5 h-5 text-neutral-950" strokeWidth={2.5} />
+          ) : (
+            <Bot className="w-6 h-6 text-neutral-950" strokeWidth={2} />
+          )}
+          {/* Status dot */}
+          {!open && (
+            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-neutral-950" />
+          )}
+        </span>
+      </button>
+
+      {/* Chat panel */}
+      {open && (
+        <div className="fixed bottom-24 right-4 sm:right-6 z-[70] w-[calc(100vw-2rem)] sm:w-96 h-[32rem] max-h-[calc(100vh-8rem)] rounded-2xl border border-white/10 bg-neutral-950/90 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="relative flex items-center gap-3 p-4 border-b border-white/10 bg-white/[0.02]">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles
+                className="w-4 h-4 text-neutral-950"
+                strokeWidth={2.5}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-white">Lindy</span>
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.16em] text-emerald-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  online
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-500">
+                AI concierge · Ataraxia Studio
+              </div>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="w-8 h-8 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Body — Lindy embed slot */}
+          <div className="flex-1 relative overflow-hidden">
+            {LINDY_CONFIG.chatEmbedUrl ? (
+              // Live Lindy embed
+              <iframe
+                src={LINDY_CONFIG.chatEmbedUrl}
+                title="Lindy chat"
+                className="w-full h-full border-0"
+                allow="clipboard-write; microphone"
+              />
+            ) : (
+              // Placeholder until you drop in your Lindy embed URL
+              <div className="h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                      <Sparkles
+                        className="w-3.5 h-3.5 text-neutral-950"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 px-3.5 py-2.5 text-sm text-neutral-200 max-w-[85%]">
+                      Hi — I'm Lindy, the AI concierge for Ataraxia Studio.
+                      I help triage incoming projects so the right person gets
+                      back to you fast.
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                      <Sparkles
+                        className="w-3.5 h-3.5 text-neutral-950"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 px-3.5 py-2.5 text-sm text-neutral-200 max-w-[85%]">
+                      Tell me about your shop and what you're trying to fix —
+                      or tap{" "}
+                      <a
+                        href="#contact"
+                        onClick={() => setOpen(false)}
+                        className="text-cyan-300 underline hover:text-cyan-200"
+                      >
+                        Request a Quote
+                      </a>{" "}
+                      to start the formal intake.
+                    </div>
+                  </div>
+                  <div className="text-center pt-4">
+                    <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border border-dashed border-white/10 rounded-full px-3 py-1">
+                      <MessageSquare className="w-3 h-3" />
+                      Lindy embed slot — drop your URL into LINDY_CONFIG
+                    </div>
+                  </div>
+                </div>
+
+                {/* Disabled composer (placeholder) */}
+                <div className="border-t border-white/10 p-3 bg-white/[0.02]">
+                  <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <input
+                      type="text"
+                      placeholder="Ask Lindy a question…"
+                      disabled
+                      className="flex-1 bg-transparent text-sm text-white placeholder:text-neutral-600 focus:outline-none disabled:cursor-not-allowed"
+                    />
+                    <button
+                      disabled
+                      className="w-7 h-7 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-neutral-500 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-neutral-600 mt-2 px-1">
+                    Embed not yet configured. Lead form below routes to Lindy
+                    via webhook.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================
+// SYSTEM STATUS — Lab telemetry strip (Manual Override mode)
+// ============================================================
+// Reads from the MARKET_BIAS constant at the top of this file.
+// Edit MARKET_BIAS by hand — no live n8n feed yet.
+// When the n8n webhook ships, swap this for a live-fetch version
+// (useEffect + setInterval polling LINDY_CONFIG.webhookUrl + "/status").
+function SystemStatus({ bias }) {
+  const toneStyles = {
+    bullish: {
+      dot: "bg-emerald-400",
+      ring: "ring-emerald-400/40",
+      text: "text-emerald-300",
+      border: "border-emerald-400/20",
+    },
+    neutral: {
+      dot: "bg-amber-300",
+      ring: "ring-amber-300/40",
+      text: "text-amber-200",
+      border: "border-amber-300/20",
+    },
+    cautious: {
+      dot: "bg-rose-400",
+      ring: "ring-rose-400/40",
+      text: "text-rose-300",
+      border: "border-rose-400/20",
+    },
+  };
+  const t = toneStyles[bias.tone] || toneStyles.neutral;
+
+  return (
+    <div className="mt-10 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] backdrop-blur-md p-5 lg:p-6">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-mono">
+          <Terminal className="w-3.5 h-3.5" />
+          System Status
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] font-mono px-2 py-0.5 rounded-full border ${t.border} ${t.text}`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+          Manual Override · {bias.updated}
+        </span>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-4">
+        {/* API Connectivity */}
+        <div className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3.5">
+          <div className="w-9 h-9 rounded-lg bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center flex-shrink-0">
+            <Wifi className="w-4 h-4 text-emerald-300" strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-mono">
+              API Connectivity
+            </div>
+            <div className="mt-1 inline-flex items-center gap-1.5 text-sm text-emerald-300">
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                <span className="relative w-2 h-2 rounded-full bg-emerald-400" />
+              </span>
+              Active
+            </div>
+          </div>
+        </div>
+
+        {/* Market Data Feed */}
+        <div className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3.5">
+          <div className="w-9 h-9 rounded-lg bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center flex-shrink-0">
+            <Radio className="w-4 h-4 text-cyan-300" strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-mono">
+              Market Data Feed
+            </div>
+            <div className="mt-1 inline-flex items-center gap-1.5 text-sm text-cyan-300">
+              <span className="relative flex w-2 h-2">
+                <span className="absolute inset-0 rounded-full bg-cyan-400 animate-ping opacity-75" />
+                <span className="relative w-2 h-2 rounded-full bg-cyan-400" />
+              </span>
+              Live
+            </div>
+          </div>
+        </div>
+
+        {/* Current Bias (driven by MARKET_BIAS const) */}
+        <div className={`flex items-start gap-3 rounded-xl border bg-white/[0.02] p-3.5 ${t.border}`}>
+          <div
+            className={`w-9 h-9 rounded-lg bg-white/[0.03] border ${t.border} flex items-center justify-center flex-shrink-0`}
+          >
+            <Compass className={`w-4 h-4 ${t.text}`} strokeWidth={2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-mono">
+              Current Bias
+            </div>
+            <div className={`mt-1 text-sm leading-snug ${t.text}`}>
+              {bias.label}
+            </div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-neutral-600 font-mono">
+              {bias.tone}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ADMIN — INTERNAL ANALYSIS TOOL (do not expose in UI)
+// ============================================================
+// Whenever a new lead email lands in your inbox, paste the
+// system-prompt block below into a fresh Claude chat, then
+// paste the full lead email body underneath it. Claude will
+// triage the lead against Ataraxia Studio's target verticals
+// and hand back a fast read + suggested reply.
+//
+// ------------------------------------------------------------
+// SYSTEM PROMPT — "Ataraxia Lead Triage"
+// ------------------------------------------------------------
+/*
+You are the lead-triage analyst for Ataraxia Studio (devataraxia.com),
+a one-person dev/agency studio that builds and maintains e-commerce
+sites for independent retail. The studio's bread-and-butter offerings
+are:
+
+  • Shopify migrations (especially POS-to-Shopify and legacy → Shopify)
+  • "Smooth Operator" maintenance retainers (uptime, inventory sanity,
+    BFCM-prep, security patching) for shops that can't afford downtime
+  • Custom React/Tailwind storefronts for specialty retailers
+  • Lightweight AI/automation tooling (n8n, Lindy) wrapped around
+    Shopify + POS data
+
+HIGH-PRIORITY TARGET VERTICALS (treat these as P0):
+  1. Liquor stores
+  2. Wine / spirits shops
+  3. Specialty retail (cheese, cigars, gourmet, gift, boutique grocery,
+     family-run shops with a physical storefront + light e-comm)
+
+Lower-priority (P1) but still in scope:
+  - Independent fashion / lifestyle boutiques
+  - Single-location restaurants/cafés wanting online ordering
+  - Existing Shopify shops needing a perf or design refresh
+
+Out of scope (politely decline / refer out):
+  - Enterprise / multi-brand platforms
+  - Crypto, gambling, adult, MLM
+  - Pure SaaS dashboards with no retail angle
+  - "Build me a marketplace / Amazon clone" requests
+
+When I paste a lead email, do all of the following in order:
+
+1. PRIORITY READ — One line: P0 / P1 / OUT OF SCOPE, with the reason.
+2. FIT SUMMARY — 2-3 sentences on how well the prospect maps to
+   Ataraxia's offerings. Call out which offering(s) fit.
+3. RED / YELLOW FLAGS — budget mismatch, unrealistic timeline, scope
+   creep risk, signs they want enterprise features, etc.
+4. CLARIFYING QUESTIONS — 3-5 sharp questions I should ask before
+   sending a quote (current platform, monthly orders, POS in use,
+   BFCM exposure, who owns the domain/DNS, etc.).
+5. PROPOSED NEXT STEP — exactly one of:
+     a) Send quote (rough $ range + scope outline)
+     b) Schedule 20-min discovery call
+     c) Decline politely with referral suggestion
+6. DRAFT REPLY — a short, warm, on-brand email I can send back.
+   Voice: confident, calm, technical-but-human, no hype. Sign-off:
+   "— Ataraxia Studio".
+
+Format the output with clear section headers in that order. Be
+concise. Don't pad. If the email is missing critical info, say so
+explicitly and ask for it in step 4.
+*/
+// ------------------------------------------------------------
+// END ADMIN BLOCK
+// ============================================================
+
+      __components.Portfolio = Portfolio;
+    })();
+
+    // ===== Intake =====
+    (() => {
+      const { ArrowLeft, Bot, Check, CheckCircle2, GitBranch, Hammer, Mail, Menu, MessageSquare, Phone, Send, ShieldCheck, Terminal, TrendingUp, X, Zap } = __ICONS;
+
+// ============================================================
+// LINDY / LEAD CONFIG — same shape as Portfolio.jsx
+// (kept in sync by hand for now; lift to a shared file later)
+// ============================================================
+const LINDY_CONFIG = {
+  webhookUrl: "", // e.g. "https://api.lindy.ai/webhooks/abc123"
+  // When the webhook is empty, clicking Submit opens your mail client
+  // pre-filled with a fully formatted lead brief sent to this address.
+  leadEmail: "ceokylehawkins@gmail.com",
+  chatEmbedUrl: "", // e.g. "https://chat.lindy.ai/embed/abc123"
+  highPriorityTypes: ["Liquor store", "Wine / spirits shop", "Specialty retail"],
+};
+
+const isHighPriorityLead = (businessType) =>
+  LINDY_CONFIG.highPriorityTypes.includes(businessType);
+
+// ============================================================
+// INTENT MAP — drives header copy, field set, and submit label
+// ============================================================
+// Each intent declares which sections to render. The form state
+// is a single object — fields just go unused if not rendered.
+// To add a new intent: add an entry below + a CTA in Portfolio.jsx
+// pointing at /intake?intent=<key>.
+// ============================================================
+const INTENTS = {
+  discuss: {
+    key: "discuss",
+    title: "Discuss a project",
+    eyebrow: "General Project Inquiry",
+    icon: MessageSquare,
+    accent: "cyan",
+    blurb:
+      "The widest funnel — tell us what you're trying to build and we'll figure out which of our services fit. Best for first-time conversations.",
+    submitLabel: "Send to Lindy",
+    sections: ["contact", "business", "project", "logistics"],
+    sourceLabel: "devataraxia.com / Discuss a project",
+    flagPriority: false,
+  },
+  migration: {
+    key: "migration",
+    title: "POS to Shopify migration",
+    eyebrow: "Specialized Migration Intake",
+    icon: GitBranch,
+    accent: "cyan",
+    blurb:
+      "Same engagement we're running right now for a premium spirits retailer — moving a high-SKU shop from a legacy POS to a headless Shopify storefront with real-time inventory parity.",
+    submitLabel: "Request migration plan",
+    sections: ["contact", "business", "migration", "logistics"],
+    sourceLabel: "devataraxia.com / POS → Shopify Migration",
+    // Migrations are always high-touch — we mark them HIGH on the back end
+    // even if the businessType isn't in the priority list.
+    flagPriority: true,
+  },
+  quote: {
+    key: "quote",
+    title: "Request a quote",
+    eyebrow: "Custom Build Quote",
+    icon: Hammer,
+    accent: "cyan",
+    blurb:
+      "We scope every Build Fee against your real operations — square footage, SKU count, checkout flow, the way your team works behind the counter. The more honest detail you share, the tighter the quote.",
+    submitLabel: "Send quote request",
+    sections: ["contact", "business", "build", "logistics"],
+    sourceLabel: "devataraxia.com / Request a quote",
+    flagPriority: false,
+  },
+  "smooth-operator": {
+    key: "smooth-operator",
+    title: "Start Smooth Operator",
+    eyebrow: "Maintenance Plan · $350/mo",
+    icon: ShieldCheck,
+    accent: "cyan",
+    blurb:
+      "We'll watch the boring stuff — uptime, security patches, POS-to-Shopify sync — so you can run the store. A quick onboarding form is all we need to get going.",
+    submitLabel: "Request onboarding",
+    sections: ["contact", "business", "operator", "logistics_lite"],
+    sourceLabel: "devataraxia.com / Smooth Operator $350",
+    flagPriority: false,
+    plan: "Smooth Operator",
+    price: "$350/mo",
+  },
+  "smooth-operator-pro": {
+    key: "smooth-operator-pro",
+    title: "Start Smooth Operator Pro",
+    eyebrow: "Maintenance + Growth · $799/mo",
+    icon: TrendingUp,
+    accent: "cyan",
+    blurb:
+      "Maintenance plus active growth — 3 dev hours/month, SEO & product page work, email flows, and a monthly strategy call. We'll need a bit more about your goals to size the engagement.",
+    submitLabel: "Request onboarding",
+    sections: ["contact", "business", "operator", "operator_pro", "logistics_lite"],
+    sourceLabel: "devataraxia.com / Smooth Operator Pro $799",
+    flagPriority: false,
+    plan: "Smooth Operator Pro",
+    price: "$799/mo",
+  },
+  talk: {
+    key: "talk",
+    title: "Talk to us",
+    eyebrow: "Quick Conversation",
+    icon: Phone,
+    accent: "emerald",
+    blurb:
+      "Lightest version of the form — just enough so we can call you back. Use this if you'd rather have a 10-minute conversation before filling out anything detailed.",
+    submitLabel: "Request a call",
+    sections: ["contact", "talk"],
+    sourceLabel: "devataraxia.com / Talk to us",
+    flagPriority: false,
+  },
+};
+
+const DEFAULT_INTENT = "discuss";
+
+// ===== Form helpers (same shape as Portfolio.jsx) =====
+const inputClass =
+  "w-full bg-white/[0.03] border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] focus:ring-2 focus:ring-cyan-400/10 transition-all";
+const selectClass = `${inputClass} appearance-none bg-no-repeat bg-[right_0.75rem_center] pr-9 cursor-pointer`;
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs uppercase tracking-[0.14em] text-neutral-400">
+          {label}
+          {required && <span className="text-cyan-400 ml-1">*</span>}
+        </span>
+        {hint && <span className="text-[10px] text-neutral-600">{hint}</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+// Section heading with monospace label + hairline rule
+function SectionHeading({ index, title, hint }) {
+  return (
+    <div className="border-t border-white/5 pt-6 first:border-t-0 first:pt-0">
+      <div className="flex items-baseline justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] text-cyan-400/80 uppercase tracking-[0.18em]">
+            {index}
+          </span>
+          <h3 className="text-sm font-medium text-white tracking-tight">
+            {title}
+          </h3>
+        </div>
+        {hint && (
+          <span className="text-[10px] text-neutral-600 hidden sm:inline">
+            {hint}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Multi-select pill-style checkboxes (matches Portfolio scope picker)
+function MultiPicker({ value = [], options, onChange, columns = 2 }) {
+  const toggle = (opt) =>
+    onChange(value.includes(opt) ? value.filter((x) => x !== opt) : [...value, opt]);
+  const cols =
+    columns === 3 ? "sm:grid-cols-3" : columns === 1 ? "" : "sm:grid-cols-2";
+  return (
+    <div className={`grid ${cols} gap-2`}>
+      {options.map((opt) => {
+        const active = value.includes(opt);
+        return (
+          <button
+            type="button"
+            key={opt}
+            onClick={() => toggle(opt)}
+            className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm text-left transition-all ${
+              active
+                ? "border-cyan-400/40 bg-cyan-400/[0.08] text-white"
+                : "border-white/10 bg-white/[0.02] text-neutral-300 hover:border-white/20 hover:bg-white/[0.04]"
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                active ? "border-cyan-400 bg-cyan-400" : "border-white/20"
+              }`}
+            >
+              {active && (
+                <Check className="w-3 h-3 text-neutral-950" strokeWidth={3} />
+              )}
+            </span>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Read ?intent=... from the URL safely (works in artifact + browser)
+function getIntentFromUrl() {
+  if (typeof window === "undefined") return DEFAULT_INTENT;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const k = params.get("intent");
+    if (k && INTENTS[k]) return k;
+  } catch (_) {
+    /* ignore */
+  }
+  return DEFAULT_INTENT;
+}
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+function Intake() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [intentKey, setIntentKey] = useState(DEFAULT_INTENT);
+
+  // Wide form state — superset of every intent's fields. Unused
+  // fields are simply ignored on submit (we filter by section).
+  const [form, setForm] = useState({
+    // contact
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+    contactPref: "Email",
+    bestTime: "",
+
+    // business
+    business: "",
+    businessType: "",
+    locations: "",
+    website: "",
+    posSystem: "",
+    skuCount: "",
+
+    // project (general / discuss)
+    projectType: [],
+    projectGoal: "",
+    coreProblem: "",
+    successLooksLike: "",
+    decisionMakers: "",
+    referrer: "",
+
+    // migration-specific
+    currentEcom: "",
+    currentSync: "",
+    biggestSyncPain: "",
+    targetGoLive: "",
+    weeklyTransactions: "",
+    categoriesSold: "",
+
+    // build / quote-specific
+    buildScope: [],
+    mustHaveIntegrations: [],
+    requirements: "",
+    inspirationLinks: "",
+
+    // operator / maintenance-specific
+    monthlyTraffic: "",
+    primaryConcerns: [],
+    billingStart: "",
+
+    // operator pro extras
+    growthGoals: "",
+    emailTool: "",
+    monthlyPriorities: [],
+
+    // talk-only
+    quickPitch: "",
+
+    // logistics (shared)
+    timeline: "",
+    budget: "",
+    notes: "",
+  });
+
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  const intent = useMemo(() => INTENTS[intentKey] || INTENTS[DEFAULT_INTENT], [intentKey]);
+  const Icon = intent.icon;
+
+  const updateField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  // Scroll shadow on nav
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Hydrate from URL on mount + react to back/forward navigation
+  useEffect(() => {
+    setIntentKey(getIntentFromUrl());
+    const onPop = () => setIntentKey(getIntentFromUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Switch intent in-page (also updates URL so it's shareable)
+  const switchIntent = (k) => {
+    if (!INTENTS[k]) return;
+    setIntentKey(k);
+    setSubmitted(false);
+    setSubmitError("");
+    if (history.replaceState) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("intent", k);
+      history.replaceState(null, "", url.toString());
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Build payload — only includes fields that are part of the active intent
+  const buildLeadPayload = () => {
+    const sections = new Set(intent.sections);
+    const include = (key, sectionsRequired) =>
+      sectionsRequired.some((s) => sections.has(s));
+
+    const businessTypePriority =
+      isHighPriorityLead(form.businessType) || intent.flagPriority
+        ? "HIGH"
+        : "STANDARD";
+
+    const data = {
+      // Always included
+      intent: intent.key,
+      intentTitle: intent.title,
+      plan: intent.plan || null,
+      planPrice: intent.price || null,
+      priority: businessTypePriority,
+      isHighPriority: businessTypePriority === "HIGH",
+      submittedAt: new Date().toISOString(),
+      source: intent.sourceLabel,
+      notifyEmail: LINDY_CONFIG.leadEmail,
+
+      // Contact (always)
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      role: form.role,
+      contactPref: form.contactPref,
+      bestTime: form.bestTime,
+    };
+
+    if (include("business", ["business", "operator", "build", "migration"])) {
+      data.business = form.business;
+      data.businessType = form.businessType;
+      data.website = form.website;
+    }
+
+    if (sections.has("business")) {
+      data.locations = form.locations;
+      data.posSystem = form.posSystem;
+      data.skuCount = form.skuCount;
+    }
+
+    if (sections.has("project")) {
+      data.projectType = form.projectType;
+      data.projectGoal = form.projectGoal;
+      data.coreProblem = form.coreProblem;
+      data.successLooksLike = form.successLooksLike;
+      data.decisionMakers = form.decisionMakers;
+      data.referrer = form.referrer;
+    }
+
+    if (sections.has("migration")) {
+      data.currentEcom = form.currentEcom;
+      data.currentSync = form.currentSync;
+      data.biggestSyncPain = form.biggestSyncPain;
+      data.targetGoLive = form.targetGoLive;
+      data.weeklyTransactions = form.weeklyTransactions;
+      data.categoriesSold = form.categoriesSold;
+    }
+
+    if (sections.has("build")) {
+      data.buildScope = form.buildScope;
+      data.mustHaveIntegrations = form.mustHaveIntegrations;
+      data.requirements = form.requirements;
+      data.inspirationLinks = form.inspirationLinks;
+    }
+
+    if (sections.has("operator")) {
+      data.monthlyTraffic = form.monthlyTraffic;
+      data.primaryConcerns = form.primaryConcerns;
+      data.billingStart = form.billingStart;
+    }
+
+    if (sections.has("operator_pro")) {
+      data.growthGoals = form.growthGoals;
+      data.emailTool = form.emailTool;
+      data.monthlyPriorities = form.monthlyPriorities;
+    }
+
+    if (sections.has("talk")) {
+      data.quickPitch = form.quickPitch;
+    }
+
+    if (sections.has("logistics") || sections.has("logistics_lite")) {
+      data.timeline = form.timeline;
+      data.budget = form.budget;
+      data.notes = form.notes;
+    }
+
+    return data;
+  };
+
+  const buildLeadMailto = (payload) => {
+    const subject = `New Lead: ${payload.business || payload.name || "Unnamed lead"} · ${intent.title}`;
+    const flagLine = payload.isHighPriority
+      ? "⚡ HIGH PRIORITY LEAD\n\n"
+      : "";
+    const lines = [];
+    lines.push(`${flagLine}Intent: ${payload.intentTitle}`);
+    if (payload.plan) lines.push(`Plan: ${payload.plan} (${payload.planPrice})`);
+    lines.push("");
+    lines.push("=== Contact ===");
+    lines.push(`Name: ${payload.name}`);
+    lines.push(`Email: ${payload.email}`);
+    lines.push(`Phone: ${payload.phone || "—"}`);
+    lines.push(`Role: ${payload.role || "—"}`);
+    lines.push(`Contact preference: ${payload.contactPref || "—"}`);
+    lines.push(`Best time to reach: ${payload.bestTime || "—"}`);
+
+    if (payload.business !== undefined) {
+      lines.push("");
+      lines.push("=== Business ===");
+      lines.push(`Business: ${payload.business || "—"}`);
+      lines.push(`Type: ${payload.businessType || "—"}`);
+      lines.push(`Website: ${payload.website || "—"}`);
+      if (payload.locations !== undefined)
+        lines.push(`Locations: ${payload.locations || "—"}`);
+      if (payload.posSystem !== undefined)
+        lines.push(`POS system: ${payload.posSystem || "—"}`);
+      if (payload.skuCount !== undefined)
+        lines.push(`SKU count: ${payload.skuCount || "—"}`);
+    }
+
+    if (payload.projectType !== undefined) {
+      lines.push("");
+      lines.push("=== Project ===");
+      lines.push(`Project type: ${(payload.projectType || []).join(", ") || "—"}`);
+      lines.push(`Goal: ${payload.projectGoal || "—"}`);
+      lines.push(`Core problem: ${payload.coreProblem || "—"}`);
+      lines.push(`Success looks like: ${payload.successLooksLike || "—"}`);
+      lines.push(`Decision makers: ${payload.decisionMakers || "—"}`);
+      lines.push(`How they heard: ${payload.referrer || "—"}`);
+    }
+
+    if (payload.currentEcom !== undefined) {
+      lines.push("");
+      lines.push("=== Migration ===");
+      lines.push(`Current ecom: ${payload.currentEcom || "—"}`);
+      lines.push(`Current sync method: ${payload.currentSync || "—"}`);
+      lines.push(`Biggest sync pain: ${payload.biggestSyncPain || "—"}`);
+      lines.push(`Target go-live: ${payload.targetGoLive || "—"}`);
+      lines.push(`Weekly transactions: ${payload.weeklyTransactions || "—"}`);
+      lines.push(`Categories sold: ${payload.categoriesSold || "—"}`);
+    }
+
+    if (payload.buildScope !== undefined) {
+      lines.push("");
+      lines.push("=== Build ===");
+      lines.push(`Scope: ${(payload.buildScope || []).join(", ") || "—"}`);
+      lines.push(
+        `Must-have integrations: ${(payload.mustHaveIntegrations || []).join(", ") || "—"}`
+      );
+      lines.push(`Requirements: ${payload.requirements || "—"}`);
+      lines.push(`Inspiration / refs: ${payload.inspirationLinks || "—"}`);
+    }
+
+    if (payload.monthlyTraffic !== undefined) {
+      lines.push("");
+      lines.push("=== Operator ===");
+      lines.push(`Monthly traffic: ${payload.monthlyTraffic || "—"}`);
+      lines.push(
+        `Primary concerns: ${(payload.primaryConcerns || []).join(", ") || "—"}`
+      );
+      lines.push(`Preferred billing start: ${payload.billingStart || "—"}`);
+    }
+
+    if (payload.growthGoals !== undefined) {
+      lines.push("");
+      lines.push("=== Growth (Pro) ===");
+      lines.push(`Growth goals: ${payload.growthGoals || "—"}`);
+      lines.push(`Email tool: ${payload.emailTool || "—"}`);
+      lines.push(
+        `Monthly priorities: ${(payload.monthlyPriorities || []).join(", ") || "—"}`
+      );
+    }
+
+    if (payload.quickPitch !== undefined) {
+      lines.push("");
+      lines.push("=== Quick Pitch ===");
+      lines.push(payload.quickPitch || "—");
+    }
+
+    if (payload.timeline !== undefined || payload.budget !== undefined) {
+      lines.push("");
+      lines.push("=== Logistics ===");
+      lines.push(`Timeline: ${payload.timeline || "—"}`);
+      lines.push(`Budget: ${payload.budget || "—"}`);
+      lines.push(`Notes: ${payload.notes || "—"}`);
+    }
+
+    return `mailto:${LINDY_CONFIG.leadEmail}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(lines.join("\n"))}`;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitError("");
+    setSubmitting(true);
+
+    const payload = buildLeadPayload();
+
+    try {
+      if (LINDY_CONFIG.webhookUrl) {
+        const res = await fetch(LINDY_CONFIG.webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      } else {
+        window.location.href = buildLeadMailto(payload);
+      }
+      console.log("[Lead submitted]", payload);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Lead submission failed:", err);
+      setSubmitError(
+        "Connection issue. Please email ceokylehawkins@gmail.com directly."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Cross-page nav handler — / prefix routes to Portfolio
+  const handleNavClick = (e, href) => {
+    if (!href) return;
+    if (href.startsWith("/")) {
+      // let the browser handle normal routing
+      setMenuOpen(false);
+      return;
+    }
+    e.preventDefault();
+    setMenuOpen(false);
+  };
+
+  const navLinks = [
+    { label: "Home", href: "/#home" },
+    { label: "The Lab", href: "/lab" },
+    { label: "Services", href: "/#services" },
+    { label: "Contact", href: "/#contact" },
+  ];
+
+  // Section: Contact (used by every intent)
+  const renderContact = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Contact"
+        hint="So we can get back to you"
+      />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Your name" required>
+          <input
+            type="text"
+            required
+            value={form.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            placeholder="Jordan Reyes"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Email" required>
+          <input
+            type="email"
+            required
+            value={form.email}
+            onChange={(e) => updateField("email", e.target.value)}
+            placeholder="you@yourshop.com"
+            className={inputClass}
+          />
+        </Field>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Phone" hint="Best for SMS lead alerts">
+          <input
+            type="tel"
+            value={form.phone}
+            onChange={(e) => updateField("phone", e.target.value)}
+            placeholder="(555) 123-4567"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Your role" hint="Owner, manager, etc.">
+          <input
+            type="text"
+            value={form.role}
+            onChange={(e) => updateField("role", e.target.value)}
+            placeholder="Owner / GM / Operator"
+            className={inputClass}
+          />
+        </Field>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Best way to reach you">
+          <select
+            value={form.contactPref}
+            onChange={(e) => updateField("contactPref", e.target.value)}
+            className={selectClass}
+          >
+            <option>Email</option>
+            <option>Phone call</option>
+            <option>Text / SMS</option>
+            <option>Either is fine</option>
+          </select>
+        </Field>
+        <Field label="Best time to reach" hint="Your local time">
+          <input
+            type="text"
+            value={form.bestTime}
+            onChange={(e) => updateField("bestTime", e.target.value)}
+            placeholder="Weekday mornings, after 6pm, etc."
+            className={inputClass}
+          />
+        </Field>
+      </div>
+    </section>
+  );
+
+  // Section: Business (used by everything except 'talk')
+  const renderBusiness = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="The shop"
+        hint="A snapshot of your operation"
+      />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Business name" required>
+          <input
+            type="text"
+            required
+            value={form.business}
+            onChange={(e) => updateField("business", e.target.value)}
+            placeholder="Reyes Wine & Spirits"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Business type" required>
+          <select
+            required
+            value={form.businessType}
+            onChange={(e) => updateField("businessType", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Select one…
+            </option>
+            <option>Liquor store</option>
+            <option>Wine / spirits shop</option>
+            <option>Specialty retail</option>
+            <option>Restaurant / café</option>
+            <option>Boutique</option>
+            <option>Other</option>
+          </select>
+        </Field>
+      </div>
+      {isHighPriorityLead(form.businessType) && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-cyan-400/30 bg-cyan-400/5 text-xs text-cyan-200">
+          <Zap className="w-3.5 h-3.5 text-cyan-300" strokeWidth={2} />
+          <span>
+            Retail lead — flagged{" "}
+            <span className="font-medium">High Priority</span>. Same-day
+            response from a real person.
+          </span>
+        </div>
+      )}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Current website" hint="Optional">
+          <input
+            type="url"
+            value={form.website}
+            onChange={(e) => updateField("website", e.target.value)}
+            placeholder="https://yourshop.com"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Number of locations">
+          <select
+            value={form.locations}
+            onChange={(e) => updateField("locations", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick one
+            </option>
+            <option>1</option>
+            <option>2–5</option>
+            <option>6–10</option>
+            <option>10+</option>
+          </select>
+        </Field>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Current POS system" hint="If any">
+          <input
+            type="text"
+            value={form.posSystem}
+            onChange={(e) => updateField("posSystem", e.target.value)}
+            placeholder="Lightspeed, Square, Clover, IT Retail, none…"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Approx SKU count">
+          <select
+            value={form.skuCount}
+            onChange={(e) => updateField("skuCount", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick a range
+            </option>
+            <option>Under 100</option>
+            <option>100–500</option>
+            <option>500–2,000</option>
+            <option>2,000–10,000</option>
+            <option>10,000+</option>
+          </select>
+        </Field>
+      </div>
+    </section>
+  );
+
+  // Section: General Project (discuss intent)
+  const renderProject = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="The project"
+        hint="What you're trying to build"
+      />
+      <Field label="What kind of project?" hint="Select all that apply">
+        <MultiPicker
+          value={form.projectType}
+          options={[
+            "New website",
+            "Site redesign",
+            "Shopify build / migration",
+            "POS integration",
+            "Custom AI agent",
+            "Internal tool",
+            "Other / not sure yet",
+          ]}
+          onChange={(v) => updateField("projectType", v)}
+        />
+      </Field>
+      <Field label="What are you trying to accomplish?" required>
+        <textarea
+          required
+          rows={3}
+          value={form.projectGoal}
+          onChange={(e) => updateField("projectGoal", e.target.value)}
+          placeholder="One or two sentences on the outcome you want."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <Field label="What's not working today?" hint="The pain you're feeling">
+        <textarea
+          rows={3}
+          value={form.coreProblem}
+          onChange={(e) => updateField("coreProblem", e.target.value)}
+          placeholder="Out-of-stock surprises, slow checkout, manual exports, missed orders, etc."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <Field label="What does success look like in 90 days?">
+        <textarea
+          rows={2}
+          value={form.successLooksLike}
+          onChange={(e) => updateField("successLooksLike", e.target.value)}
+          placeholder="If we nail this, what's true about your business in 3 months?"
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Decision-makers" hint="Who else needs to weigh in?">
+          <input
+            type="text"
+            value={form.decisionMakers}
+            onChange={(e) => updateField("decisionMakers", e.target.value)}
+            placeholder="Just me / co-owner / partner / board"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="How did you find us?">
+          <select
+            value={form.referrer}
+            onChange={(e) => updateField("referrer", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick one
+            </option>
+            <option>Search</option>
+            <option>Referral</option>
+            <option>LinkedIn</option>
+            <option>Twitter / X</option>
+            <option>Conference / event</option>
+            <option>Other</option>
+          </select>
+        </Field>
+      </div>
+    </section>
+  );
+
+  // Section: Migration-specific
+  const renderMigration = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Migration details"
+        hint="POS → Shopify specifics"
+      />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Current ecommerce platform">
+          <select
+            value={form.currentEcom}
+            onChange={(e) => updateField("currentEcom", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick one
+            </option>
+            <option>None — in-store only today</option>
+            <option>Shopify (already, but broken)</option>
+            <option>WooCommerce</option>
+            <option>BigCommerce</option>
+            <option>Squarespace</option>
+            <option>Wix</option>
+            <option>Custom build</option>
+            <option>Other</option>
+          </select>
+        </Field>
+        <Field label="Current sync method">
+          <select
+            value={form.currentSync}
+            onChange={(e) => updateField("currentSync", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick one
+            </option>
+            <option>None — manual updates</option>
+            <option>Manual CSV exports</option>
+            <option>Built-in POS connector</option>
+            <option>Third-party app (Stocky, Shopventory, etc.)</option>
+            <option>Custom integration</option>
+            <option>Not sure</option>
+          </select>
+        </Field>
+      </div>
+      <Field
+        label="Biggest sync pain right now"
+        hint="The thing that keeps biting you"
+        required
+      >
+        <textarea
+          required
+          rows={3}
+          value={form.biggestSyncPain}
+          onChange={(e) => updateField("biggestSyncPain", e.target.value)}
+          placeholder="Oversells when bottles move fast, missing SKUs online, prices drifting between in-store and web, etc."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Target go-live date">
+          <input
+            type="text"
+            value={form.targetGoLive}
+            onChange={(e) => updateField("targetGoLive", e.target.value)}
+            placeholder="e.g. Before holiday season, July 1, ASAP"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Approx weekly transactions">
+          <select
+            value={form.weeklyTransactions}
+            onChange={(e) => updateField("weeklyTransactions", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick a range
+            </option>
+            <option>Under 100</option>
+            <option>100–500</option>
+            <option>500–2,000</option>
+            <option>2,000–10,000</option>
+            <option>10,000+</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="Categories you sell" hint="Helps us anticipate edge cases">
+        <input
+          type="text"
+          value={form.categoriesSold}
+          onChange={(e) => updateField("categoriesSold", e.target.value)}
+          placeholder="Wine, spirits, beer, accessories, gift packs…"
+          className={inputClass}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Build / Quote-specific
+  const renderBuild = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Scope"
+        hint="What you want built"
+      />
+      <Field label="What does the build include?" hint="Select all that apply">
+        <MultiPicker
+          value={form.buildScope}
+          options={[
+            "Brand-new website",
+            "Redesign existing site",
+            "Headless Shopify storefront",
+            "POS integration / sync layer",
+            "Custom checkout flow",
+            "Customer account portal",
+            "Admin tools / internal app",
+            "AI feature embedded in site",
+          ]}
+          onChange={(v) => updateField("buildScope", v)}
+        />
+      </Field>
+      <Field
+        label="Must-have integrations"
+        hint="Tools we have to play nicely with"
+      >
+        <MultiPicker
+          value={form.mustHaveIntegrations}
+          options={[
+            "Shopify",
+            "POS (Lightspeed/Square/Clover/etc.)",
+            "Klaviyo",
+            "Mailchimp",
+            "ShipStation",
+            "QuickBooks",
+            "Google Analytics / GA4",
+            "Other",
+          ]}
+          onChange={(v) => updateField("mustHaveIntegrations", v)}
+          columns={3}
+        />
+      </Field>
+      <Field
+        label="Core requirements"
+        hint="The non-negotiables"
+        required
+      >
+        <textarea
+          required
+          rows={4}
+          value={form.requirements}
+          onChange={(e) => updateField("requirements", e.target.value)}
+          placeholder="What MUST the finished thing do? Compliance, age verification, multi-location pickup, gift cards, loyalty, etc."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <Field label="Inspiration / reference sites" hint="Optional">
+        <textarea
+          rows={2}
+          value={form.inspirationLinks}
+          onChange={(e) => updateField("inspirationLinks", e.target.value)}
+          placeholder="Links to sites you love (or hate). Just paste them in."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Operator (maintenance baseline)
+  const renderOperator = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Maintenance fit"
+        hint="So we can size onboarding"
+      />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Approx monthly site traffic">
+          <select
+            value={form.monthlyTraffic}
+            onChange={(e) => updateField("monthlyTraffic", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick a range
+            </option>
+            <option>Under 1,000 visits</option>
+            <option>1,000–10,000 visits</option>
+            <option>10,000–50,000 visits</option>
+            <option>50,000+ visits</option>
+            <option>Don't know yet</option>
+          </select>
+        </Field>
+        <Field label="Preferred billing start date">
+          <input
+            type="text"
+            value={form.billingStart}
+            onChange={(e) => updateField("billingStart", e.target.value)}
+            placeholder="ASAP, 1st of next month, etc."
+            className={inputClass}
+          />
+        </Field>
+      </div>
+      <Field
+        label="What worries you most?"
+        hint="Pick the ones that keep you up"
+      >
+        <MultiPicker
+          value={form.primaryConcerns}
+          options={[
+            "Site uptime",
+            "Inventory accuracy",
+            "Security & patches",
+            "Page speed",
+            "Customer support overflow",
+            "I just don't want to think about it",
+          ]}
+          onChange={(v) => updateField("primaryConcerns", v)}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Operator Pro extras (growth-focused)
+  const renderOperatorPro = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Growth focus"
+        hint="So Pro hours go where they matter"
+      />
+      <Field
+        label="Top 1–2 growth goals for the next 90 days"
+        required
+      >
+        <textarea
+          required
+          rows={3}
+          value={form.growthGoals}
+          onChange={(e) => updateField("growthGoals", e.target.value)}
+          placeholder="More foot traffic from local search, build email list to 5k, launch loyalty program, etc."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+      <Field label="Email marketing tool" hint="If any">
+        <select
+          value={form.emailTool}
+          onChange={(e) => updateField("emailTool", e.target.value)}
+          className={selectClass}
+        >
+          <option value="" disabled>
+            Pick one
+          </option>
+          <option>None yet</option>
+          <option>Klaviyo</option>
+          <option>Mailchimp</option>
+          <option>Shopify Email</option>
+          <option>Constant Contact</option>
+          <option>Other</option>
+        </select>
+      </Field>
+      <Field
+        label="Where should monthly Pro hours focus?"
+        hint="Pick the priorities"
+      >
+        <MultiPicker
+          value={form.monthlyPriorities}
+          options={[
+            "SEO / local search",
+            "Email flows (welcome, abandoned cart, win-back)",
+            "New landing pages",
+            "Promo banners & seasonal swaps",
+            "Product page tuning",
+            "Reporting / dashboards",
+            "Surprise me",
+          ]}
+          onChange={(v) => updateField("monthlyPriorities", v)}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Talk (lightest)
+  const renderTalk = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="What's on your mind?"
+        hint="A few lines is plenty"
+      />
+      <Field label="Business name" hint="Optional">
+        <input
+          type="text"
+          value={form.business}
+          onChange={(e) => updateField("business", e.target.value)}
+          placeholder="Reyes Wine & Spirits"
+          className={inputClass}
+        />
+      </Field>
+      <Field label="What do you want to talk about?" required>
+        <textarea
+          required
+          rows={4}
+          value={form.quickPitch}
+          onChange={(e) => updateField("quickPitch", e.target.value)}
+          placeholder="One paragraph is fine. Just enough so we can come prepared."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Logistics (full)
+  const renderLogistics = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Logistics"
+        hint="Timeline & budget"
+      />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Field label="Timeline">
+          <select
+            value={form.timeline}
+            onChange={(e) => updateField("timeline", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              When do you need this?
+            </option>
+            <option>ASAP</option>
+            <option>1–3 months</option>
+            <option>3–6 months</option>
+            <option>6+ months</option>
+            <option>Just exploring</option>
+          </select>
+        </Field>
+        <Field label="Estimated budget">
+          <select
+            value={form.budget}
+            onChange={(e) => updateField("budget", e.target.value)}
+            className={selectClass}
+          >
+            <option value="" disabled>
+              Pick a range
+            </option>
+            <option>Under $5K</option>
+            <option>$5K – $15K</option>
+            <option>$15K – $30K</option>
+            <option>$30K – $75K</option>
+            <option>$75K+</option>
+            <option>Not sure yet</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="Anything else we should know?" hint="Optional">
+        <textarea
+          rows={3}
+          value={form.notes}
+          onChange={(e) => updateField("notes", e.target.value)}
+          placeholder="Constraints, history with other agencies, weird edge cases — fair game."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+    </section>
+  );
+
+  // Section: Logistics (lite — for operator + talk)
+  const renderLogisticsLite = (idx) => (
+    <section className="space-y-5">
+      <SectionHeading
+        index={idx}
+        title="Anything else?"
+        hint="Optional"
+      />
+      <Field label="Notes for us">
+        <textarea
+          rows={3}
+          value={form.notes}
+          onChange={(e) => updateField("notes", e.target.value)}
+          placeholder="Constraints, hours of operation, whatever else helps us prep."
+          className={`${inputClass} resize-none`}
+        />
+      </Field>
+    </section>
+  );
+
+  // Map section keys to renderers + auto-number them
+  const renderers = {
+    contact: renderContact,
+    business: renderBusiness,
+    project: renderProject,
+    migration: renderMigration,
+    build: renderBuild,
+    operator: renderOperator,
+    operator_pro: renderOperatorPro,
+    talk: renderTalk,
+    logistics: renderLogistics,
+    logistics_lite: renderLogisticsLite,
+  };
+
+  const intentTabs = Object.values(INTENTS);
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans antialiased selection:bg-cyan-400/30 selection:text-white relative overflow-x-hidden">
+      {/* Ambient backdrop */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-50"
+        style={{
+          background:
+            "radial-gradient(800px circle at 70% 0%, rgba(34,211,238,0.08), transparent 50%)",
+        }}
+      />
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full z-0" />
+
+      {/* ===================== NAVIGATION ===================== */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-neutral-950/70 backdrop-blur-xl border-b border-white/5"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+          <a href="/#home" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <Terminal className="w-4 h-4 text-neutral-950" strokeWidth={2.5} />
+            </div>
+            <span className="text-sm font-medium tracking-tight text-neutral-200 group-hover:text-white transition-colors">
+              ataraxia<span className="text-cyan-400">.dev</span>
+            </span>
+          </a>
+
+          <ul className="hidden md:flex items-center gap-1">
+            {navLinks.map((l) => (
+              <li key={l.label}>
+                <a
+                  href={l.href}
+                  onClick={(e) => handleNavClick(e, l.href)}
+                  className="px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors rounded-md hover:bg-white/5"
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden md:flex items-center gap-3">
+            <a
+              href="/#home"
+              className="group inline-flex items-center gap-1.5 text-xs font-medium text-neutral-400 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-white/5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to site
+            </a>
+          </div>
+
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="md:hidden w-9 h-9 inline-flex items-center justify-center rounded-md text-neutral-300 hover:bg-white/5"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {menuOpen && (
+          <div className="md:hidden border-t border-white/5 bg-neutral-950/90 backdrop-blur-xl">
+            <div className="px-6 py-4 flex flex-col gap-1">
+              {navLinks.map((l) => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={(e) => handleNavClick(e, l.href)}
+                  className="px-3 py-2.5 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-md"
+                >
+                  {l.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* ===================== HEADER ===================== */}
+      <section
+        id="intake"
+        className="relative z-10 pt-32 pb-12 px-6 lg:px-10 max-w-6xl mx-auto"
+      >
+        <a
+          href="/#home"
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-cyan-300 transition-colors mb-8 font-mono"
+        >
+          <ArrowLeft className="w-3 h-3" />
+          devataraxia.com / intake
+          <span className="text-neutral-700">/</span>
+          <span className="text-cyan-400">{intent.key}</span>
+        </a>
+
+        <div className="grid lg:grid-cols-5 gap-10 items-end">
+          <div className="lg:col-span-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 backdrop-blur-md text-xs text-cyan-300 mb-6">
+              <Icon className="w-3.5 h-3.5" />
+              {intent.eyebrow}
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight leading-[1.05]">
+              {intent.title}
+            </h1>
+            <p className="mt-6 text-base text-neutral-400 max-w-2xl leading-relaxed">
+              {intent.blurb}
+            </p>
+          </div>
+
+          {/* Sidebar with 'what happens next' steps */}
+          <div className="lg:col-span-2 space-y-3">
+            {[
+              {
+                n: "01",
+                t: "Lindy reviews instantly",
+                d: "Our AI concierge triages every submission the moment it lands.",
+              },
+              {
+                n: "02",
+                t: "Real human follows up",
+                d: "Same-business-day response, faster for high-priority leads.",
+              },
+              {
+                n: "03",
+                t: "30-min discovery call",
+                d: "No slide deck, no pressure — we figure out fit together.",
+              },
+            ].map((s) => (
+              <div
+                key={s.n}
+                className="flex gap-3 p-3.5 rounded-xl border border-white/5 bg-white/[0.02]"
+              >
+                <span className="font-mono text-xs text-cyan-400/80 mt-0.5">
+                  {s.n}
+                </span>
+                <div>
+                  <div className="text-sm font-medium text-white">{s.t}</div>
+                  <div className="mt-0.5 text-xs text-neutral-500 leading-relaxed">
+                    {s.d}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== INTENT TABS ===================== */}
+      <section className="relative z-10 px-6 lg:px-10 max-w-6xl mx-auto mb-10">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-600 mb-3 font-mono">
+          Switch intake form
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {intentTabs.map((t) => {
+            const active = t.key === intent.key;
+            const TIcon = t.icon;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => switchIntent(t.key)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-all ${
+                  active
+                    ? "border-cyan-400/40 bg-cyan-400/[0.08] text-white"
+                    : "border-white/10 bg-white/[0.02] text-neutral-400 hover:text-white hover:border-white/20"
+                }`}
+              >
+                <TIcon className="w-3 h-3" />
+                {t.title}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ===================== FORM ===================== */}
+      <section className="relative z-10 pb-24 px-6 lg:px-10 max-w-6xl mx-auto">
+        <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-6 sm:p-8 lg:p-10 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full" />
+
+          {submitted ? (
+            <div className="relative text-center py-16">
+              <div className="w-16 h-16 mx-auto rounded-2xl border border-emerald-400/30 bg-emerald-400/10 flex items-center justify-center mb-6 relative">
+                <CheckCircle2
+                  className="w-8 h-8 text-emerald-300"
+                  strokeWidth={1.75}
+                />
+                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full border border-cyan-400/40 bg-neutral-950 flex items-center justify-center">
+                  <Bot
+                    className="w-3.5 h-3.5 text-cyan-300"
+                    strokeWidth={2}
+                  />
+                </div>
+              </div>
+              <h3 className="text-2xl font-medium tracking-tight text-white">
+                Thanks{form.name ? `, ${form.name.split(" ")[0]}` : ""}.
+              </h3>
+              <p className="mt-3 text-sm text-neutral-300 max-w-md mx-auto leading-relaxed">
+                My AI assistant,{" "}
+                <span className="text-cyan-300 font-medium">Lindy</span>, is
+                reviewing your{" "}
+                <span className="text-white">{intent.title.toLowerCase()}</span>{" "}
+                request.{" "}
+                <span className="text-white">
+                  Expect a text or email shortly.
+                </span>
+              </p>
+              {(isHighPriorityLead(form.businessType) || intent.flagPriority) && (
+                <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/5 text-xs text-cyan-200">
+                  <Zap
+                    className="w-3 h-3 text-cyan-300"
+                    strokeWidth={2.5}
+                  />
+                  Flagged High Priority — same-day human follow-up
+                </div>
+              )}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <a
+                  href="/#home"
+                  className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors px-4 py-2 rounded-md"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to site
+                </a>
+                <button
+                  onClick={() => {
+                    setSubmitted(false);
+                    setSubmitError("");
+                  }}
+                  className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white border border-white/10 hover:border-white/20 hover:bg-white/5 transition-colors px-4 py-2 rounded-md"
+                >
+                  Submit another request
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="relative space-y-10">
+              {/* Plan summary card (only on operator intents) */}
+              {intent.plan && (
+                <div className="rounded-xl border border-cyan-400/25 bg-gradient-to-br from-cyan-400/[0.06] to-white/[0.01] p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg border border-cyan-400/30 bg-cyan-400/10 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck
+                      className="w-5 h-5 text-cyan-300"
+                      strokeWidth={1.75}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white">
+                      Onboarding to {intent.plan}
+                    </div>
+                    <div className="text-xs text-neutral-400 mt-0.5">
+                      {intent.price} · cancel anytime · no annual contract
+                    </div>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300 border border-cyan-400/30 bg-cyan-400/10 rounded-full px-2.5 py-1 hidden sm:inline">
+                    Selected plan
+                  </span>
+                </div>
+              )}
+
+              {/* Hidden lead-priority indicator */}
+              <input
+                type="hidden"
+                name="lead_priority"
+                value={
+                  isHighPriorityLead(form.businessType) || intent.flagPriority
+                    ? "HIGH"
+                    : "STANDARD"
+                }
+              />
+              <input type="hidden" name="intent" value={intent.key} />
+
+              {/* Render each section in the intent's order */}
+              {intent.sections.map((sectionKey, i) => {
+                const renderer = renderers[sectionKey];
+                if (!renderer) return null;
+                const idx = String(i + 1).padStart(2, "0");
+                return <div key={sectionKey}>{renderer(idx)}</div>;
+              })}
+
+              {submitError && (
+                <div className="text-xs text-rose-300 bg-rose-400/5 border border-rose-400/20 rounded-lg px-3 py-2">
+                  {submitError}{" "}
+                  <a
+                    href={buildLeadMailto(buildLeadPayload())}
+                    className="underline hover:text-rose-200"
+                  >
+                    Email {LINDY_CONFIG.leadEmail}
+                  </a>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-4 border-t border-white/5">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="group inline-flex items-center justify-center gap-2 bg-white text-neutral-950 hover:bg-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors px-6 py-3 rounded-md text-sm font-medium"
+                >
+                  {submitting ? "Sending…" : intent.submitLabel}
+                  <Send className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+                <span className="text-xs text-neutral-500">
+                  Routed straight to my AI assistant, Lindy. We'll never share
+                  your details.
+                </span>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Footer reassurance */}
+        <div className="mt-8 flex items-center justify-between text-xs text-neutral-600 px-2">
+          <span className="inline-flex items-center gap-2">
+            <Mail className="w-3 h-3" />
+            Or email{" "}
+            <a
+              href={`mailto:${LINDY_CONFIG.leadEmail}`}
+              className="text-neutral-400 hover:text-cyan-300 transition-colors"
+            >
+              {LINDY_CONFIG.leadEmail}
+            </a>{" "}
+            directly.
+          </span>
+          <span className="font-mono hidden sm:inline">
+            FORM/{intent.key.toUpperCase()} · v1
+          </span>
+        </div>
+      </section>
+
+      {/* ===================== FOOTER ===================== */}
+      <footer className="relative z-10 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-6 flex items-center justify-between text-xs text-neutral-600">
+          <span>© 2026 Ataraxia Studio. All rights reserved.</span>
+          <span className="font-mono">v1.0.0 · built with care</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+      __components.Intake = Intake;
+    })();
+
+    // ===== Router shell =====
+    function App() {
+      const initial = (() => {
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.get("page") === "intake") {
+          return { page: "intake", intent: sp.get("intent") || "discuss" };
+        }
+        return { page: "home" };
+      })();
+      const [view, setView] = useState(initial);
+
+      const viewRef = useRef(view);
+      useEffect(() => {
+        viewRef.current = view;
+        const pg = document.getElementById("rd-page");
+        if (pg) pg.textContent = view.page === "intake" ? "intake?" + view.intent : "home";
+      }, [view]);
+
+      const setLast = (msg, kind) => {
+        const el = document.getElementById("rd-last");
+        if (el) el.textContent = msg;
+        const log = document.getElementById("rd-log");
+        if (log) {
+          const div = document.createElement("div");
+          if (kind) div.className = kind;
+          const t = new Date();
+          const ts = String(t.getMinutes()).padStart(2,"0") + ":" + String(t.getSeconds()).padStart(2,"0") + "." + String(t.getMilliseconds()).padStart(3,"0").slice(0,2);
+          div.textContent = ts + "  " + msg;
+          log.insertBefore(div, log.firstChild);
+          while (log.children.length > 30) log.removeChild(log.lastChild);
+        }
+        console.log("[router]", msg);
+      };
+
+      // Safe wrapper for history.replaceState — throws on file:// when path
+      // changes, so we swallow the error (URL rewriting is decorative).
+      const safeReplaceState = (url) => {
+        try {
+          window.history.replaceState(null, "", url);
+          return true;
+        } catch (err) {
+          setLast("replaceState(" + url + ") blocked: " + err.name, "warn");
+          return false;
+        }
+      };
+
+      // Bullet-proof scroll: polls for the element until it appears (max ~1.5s),
+      // then scrolls. Works whether the target is already in DOM or about to be.
+      const scrollToIdWhenReady = (id, label) => {
+        const lab = label || "scroll";
+        const start = performance.now();
+        let attempts = 0;
+        const tick = () => {
+          attempts++;
+          const el = document.getElementById(id);
+          if (el) {
+            const top = Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - 96);
+            window.scrollTo({ top, behavior: "smooth" });
+            try { el.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_) {}
+            setLast(lab + " ✓ #" + id + " top=" + Math.round(top) + " (try " + attempts + ", " + Math.round(performance.now()-start) + "ms)", "ok");
+            return;
+          }
+          if (performance.now() - start > 1500) {
+            setLast(lab + " ✗ #" + id + " never appeared (" + attempts + " tries)", "err");
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      };
+
+      // Expose for the test buttons + devtools manual testing
+      window.__router = {
+        scroll: (id) => {
+          setLast("__router.scroll(" + id + ") page=" + viewRef.current.page);
+          if (viewRef.current.page !== "home") {
+            safeReplaceState("#" + id);
+            setView({ page: "home" });
+          }
+          scrollToIdWhenReady(id, "btn");
+        },
+        go: (page, intent) => {
+          setLast("__router.go(" + page + (intent ? "," + intent : "") + ")");
+          if (page === "intake") {
+            safeReplaceState("?page=intake&intent=" + (intent || "discuss"));
+            setView({ page: "intake", intent: intent || "discuss" });
+          } else {
+            safeReplaceState("#home");
+            setView({ page: "home" });
+          }
+          window.scrollTo(0, 0);
+        },
+        getView: () => viewRef.current,
+        setLast,
+      };
+
+      useEffect(() => {
+        let clickCount = 0;
+        const onClick = (e) => {
+          clickCount++;
+          const cnt = document.getElementById("rd-clicks");
+          if (cnt) cnt.textContent = String(clickCount);
+
+          const a = e.target.closest && e.target.closest("a");
+          if (!a) {
+            return; // not an anchor — count only
+          }
+          const href = a.getAttribute("href");
+          if (!href) { setLast("click <a> no href", "warn"); return; }
+          if (a.target === "_blank") { setLast("skip _blank: " + href); return; }
+          if (/^(mailto:|tel:|sms:)/i.test(href)) { setLast("skip mailto: " + href); return; }
+          if (/^https?:/i.test(href)) { setLast("skip external: " + href); return; }
+          if (a.hasAttribute("download")) { setLast("skip download: " + href); return; }
+
+          const currentPage = viewRef.current.page;
+          setLast("CLICK href=" + href + " on=" + currentPage);
+
+          // Always block default + bubble for our internal navs, then route
+          const route = (action) => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            action();
+          };
+
+          if (href.startsWith("/intake")) {
+            return route(() => {
+              try {
+                const qs = href.includes("?") ? href.split("?")[1] : "";
+                const intent = new URLSearchParams(qs).get("intent") || "discuss";
+                safeReplaceState("?page=intake&intent=" + intent);
+                setView({ page: "intake", intent });
+                window.scrollTo(0, 0);
+                setLast("→ intake?" + intent, "ok");
+              } catch (err) {
+                setLast("intake route error: " + err.message, "err");
+              }
+            });
+          }
+
+          // Determine the target section id from the href
+          let targetId = null;
+          if (href === "/lab") targetId = "lab";
+          else if (href.startsWith("#") && href.length > 1) targetId = href.slice(1);
+          else if (href === "/" || href === "/#") targetId = "home";
+          else if (href.startsWith("/#")) targetId = href.slice(2);
+
+          if (targetId) {
+            return route(() => {
+              try {
+                if (currentPage !== "home") {
+                  setLast("→ switching intake → home for #" + targetId, "warn");
+                  safeReplaceState("#" + targetId);
+                  setView({ page: "home" });
+                } else {
+                  safeReplaceState("#" + targetId);
+                }
+                scrollToIdWhenReady(targetId, currentPage === "home" ? "nav" : "nav-cross");
+              } catch (err) {
+                setLast("nav route error: " + err.message, "err");
+              }
+            });
+          }
+
+          setLast("UNHANDLED " + href, "err");
+        };
+        document.addEventListener("click", onClick, true);
+        setLast("listener installed", "ok");
+        return () => document.removeEventListener("click", onClick, true);
+      }, []);
+
+      useEffect(() => {
+        const onPop = () => {
+          const sp = new URLSearchParams(window.location.search);
+          if (sp.get("page") === "intake") {
+            setView({ page: "intake", intent: sp.get("intent") || "discuss" });
+          } else {
+            setView({ page: "home" });
+          }
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+      }, []);
+
+      if (view.page === "intake") {
+        const Intake = __components.Intake;
+        return <Intake key={view.intent} />;
+      }
+      const Portfolio = __components.Portfolio;
+      return <Portfolio />;
+    }
+
+    createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
