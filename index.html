@@ -248,29 +248,50 @@ function Portfolio() {
     const payload = buildLeadPayload();
 
     try {
-      // Primary path: POST to Lindy / Zapier / your own webhook.
+      // Primary: POST to Lindy webhook (8s timeout so fallback fires quickly if Lindy is down).
       if (LINDY_CONFIG.webhookUrl) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(LINDY_CONFIG.webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
+        clearTimeout(timer);
         if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
       } else {
-        // Fallback path: open the user's mail client pre-filled to ceokylehawkins@gmail.com
-        // with a fully formatted lead brief — guarantees you receive the lead
-        // even before the Lindy webhook is wired up.
-        window.location.href = buildLeadMailto(payload);
+        throw new Error("No primary webhook configured");
       }
 
-      // Always log locally for dev visibility
-      console.log("[Lead submitted]", payload);
+      console.log("[Lead submitted via Lindy]", payload);
       setSubmitted(true);
     } catch (err) {
-      console.error("Lead submission failed:", err);
-      setSubmitError(
-        "Connection issue. Please email ceokylehawkins@gmail.com directly."
-      );
+      // Backup: Formsubmit sends directly to ceokylehawkins@gmail.com.
+      // NOTE: First ever submission triggers a one-time activation email to ceokylehawkins@gmail.com
+      // — click the activation link once and all future backups fire automatically.
+      console.warn("Primary webhook failed, trying Formsubmit backup:", err.message);
+      try {
+        await fetch("https://formsubmit.co/ajax/ceokylehawkins@gmail.com", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            name: payload.name,
+            email: payload.email,
+            company: payload.company || "",
+            message: payload.message || "",
+            _subject: `[BACKUP] New lead from devataraxia.com — ${payload.name} from ${payload.company || "unknown"}`,
+            _template: "table",
+          }),
+        });
+        console.log("[Lead submitted via Formsubmit backup]", payload);
+        setSubmitted(true);
+      } catch (backupErr) {
+        console.error("Both submission paths failed:", backupErr);
+        setSubmitError(
+          "Connection issue. Please email ceokylehawkins@gmail.com directly."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
